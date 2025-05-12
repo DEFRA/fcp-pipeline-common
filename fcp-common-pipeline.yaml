@@ -1,0 +1,27 @@
+      
+stages:
+- stage: init
+  displayName: 'Init Stage'
+  jobs:
+  - job: Job1
+    displayName: 'Job '
+    steps:
+    - script: |
+        echo Step 1
+      displayName: 'Step 1'
+    - script: |
+        echo Step 2
+      displayName: 'Step 2'
+
+- stage: Build
+  displayName: 'Build Stage'
+  jobs:
+  - job: Job1
+    displayName: 'Job '
+    steps:
+    - script: |
+        echo Step 1
+      displayName: 'Step 1'
+    - script: |
+        echo Step 2
+      displayName: 'Step 2'  
