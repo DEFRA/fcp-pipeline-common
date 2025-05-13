@@ -3,7 +3,7 @@ stages:
 - stage: init
   displayName: 'Init Stage'
   jobs:
-  - job: prepare-workspace
+  - job: prepare_workspace
     displayName: 'Prepare Workspace'
     steps:
 
