@@ -19,7 +19,7 @@ stages:
   displayName: 'Build Stage'
   jobs:
   - job: Job1
-    displayName: 'Job '
+    displayName: 'Job'
     steps:
     - script: |
         echo Step 1
