@@ -9,7 +9,7 @@ stages:
 
     - script: |
         echo "This step is not required for this pipeline"
-        echo "testing the fake  key: sb_72f6f10c6abf1234567890abcdefg345"
+        echo "testing the fake key: ghp_72f6f10c6abf1234567890abcdefg345"
       displayName: 'Clean workspace'
 
     - script: |
