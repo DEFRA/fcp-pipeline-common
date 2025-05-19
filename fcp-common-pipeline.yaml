@@ -4,17 +4,13 @@ stages:
   displayName: 'Init Stage'
   jobs:
   - job: prepare_workspace
-    displayName: 'Prepare Workspace'
+    displayName: 'Prepare and Init Workspace'
     steps:
 
     - script: |
-        echo "This step is not required for this pipeline"
-        echo "testing the fake key: AKIAIOSFODNN7EXAMPLE"
-      displayName: 'Clean workspace'
-
-    - script: |
-        echo "The branch name is: $(Build.SourceBranch)"
-      displayName: 'Get default branch'
+        echo -e "\033[0;32mRepository: $(Build.Repository.Name)\033[0m"
+        echo -e "\033[0;33mBranch: $(Build.SourceBranchName)\033[0m"
+      displayName: 'Print repo and branch'
 
 - stage: Build
   displayName: 'Build Stage'
