@@ -1,0 +1,104 @@
+parameters:
+  - name: appFrameworkType
+    type: string
+  - name: appRootDir
+    type: string
+    default: '.'
+  - name: lcovReportPaths
+    type: string
+    default: './test-output/lcov.info'
+  - name: xmlReportPaths
+    type: string
+    default: './test-output/xmlReport.xml'    
+
+steps:
+- script: |
+    echo "##vso[task.setvariable variable=appVersion]$(Build.BuildNumber)"
+  displayName: "Set App Version"
+
+- script: |
+    echo "Creating the project $(appName) version $(appVersion) in the Sonar Cloud if it is not there"
+    SYSTEM_DEBUG=true ./fcp-pipeline-common/ado-pipeline/stage/scripts/set-sonarCloud.sh \
+    -r $(appName) \
+    -k $(SONAR-API-KEY)
+
+  displayName: "Setup SonarCloud Project"
+  name: SetupSonarCloudProject
+
+
+- task: SonarCloudPrepare@3
+  displayName: 'Prepare Sonar analysis'
+  inputs:
+    SonarQube: 'DEFRA-FCP-SonarCloud'
+    organization: 'defra'
+    ${{ if eq(parameters.appFrameworkType, 'dotnet') }}:
+      scannerMode: dotnet
+      dotnetScannerVersion: '8.0'
+      projectKey: $(appName)
+      projectName: $(appName)
+      projectVersion: $(appVersion)
+      ${{ if ne(variables['Build.Reason'], 'PullRequest') }}:
+        extraProperties: |
+          sonar.cs.opencover.reportsPaths=**/coverage.opencover.xml
+          sonar.cs.vstest.reportsPaths=$(Agent.TempDirectory)/*.trx
+          sonar.cs.vscoveragexml.reportsPaths=$(Agent.TempDirectory)/**/*.coverage
+          sonar.exclusions=**/obj/**,**/*.Tests.csproj,**/Migrations/*
+          sonar.qualitygate.wait=true
+      ${{ if eq(variables['Build.Reason'], 'PullRequest') }}:
+        extraProperties: |
+          sonar.pullrequest.key=$(System.PullRequest.PullRequestNumber)
+          sonar.pullrequest.branch=$(System.PullRequest.SourceBranch)
+          sonar.pullrequest.base=$(System.PullRequest.TargetBranch)
+          sonar.cs.opencover.reportsPaths=**/coverage.opencover.xml
+          sonar.cs.vstest.reportsPaths=$(Agent.TempDirectory)/*.trx
+          sonar.cs.vscoveragexml.reportsPaths=$(Agent.TempDirectory)/**/*.coverage
+          sonar.exclusions=**/obj/**,**/*.Tests.csproj,**/Migrations/*
+          sonar.qualitygate.wait=true
+
+    ${{ if eq(parameters.appFrameworkType, 'nodejs') }}:
+      scannerMode: cli
+      configFile: '$(appName)/sonar-project.properties'
+      ${{ if ne(variables['Build.Reason'], 'PullRequest') }}:
+        extraProperties: |      
+          sonar.projectKey=$(appName)
+          sonar.projectName=$(appName)
+          sonar.projectVersion=$(appVersion)
+          sonar.javascript.lcov.reportPaths=$(appName)/${{ parameters.lcovReportPaths }}
+          sonar.coverage.jacoco.xmlReportPaths=$(appName)/${{ parameters.xmlReportPaths }}
+      ${{ if eq(variables['Build.Reason'], 'PullRequest') }}:
+        extraProperties: |
+          sonar.projectKey=$(appName)
+          sonar.projectName=$(appName)
+          sonar.projectVersion=$(appVersion)
+          sonar.javascript.lcov.reportPaths=$(appName)/${{ parameters.lcovReportPaths }}
+          sonar.coverage.jacoco.xmlReportPaths=$(appName)/${{ parameters.xmlReportPaths }}
+          sonar.pullrequest.key=$(System.PullRequest.PullRequestNumber)
+          sonar.pullrequest.branch=$(System.PullRequest.SourceBranch)
+          sonar.pullrequest.base=$(System.PullRequest.TargetBranch)
+
+    ${{ if eq(parameters.appFrameworkType, 'java') }}:
+      scannerMode: 'Other'
+      ${{ if ne(variables['Build.Reason'], 'PullRequest') }}:
+        extraProperties: |
+          sonar.projectKey=$(appName)
+          sonar.projectName=$(appName)
+          sonar.projectVersion=$(appVersion)
+      ${{ if eq(variables['Build.Reason'], 'PullRequest') }}:
+        extraProperties: |
+          sonar.projectKey=$(appName)
+          sonar.projectName=$(appName)
+          sonar.projectVersion=$(appVersion)
+          sonar.pullrequest.key=$(System.PullRequest.PullRequestNumber)
+          sonar.pullrequest.branch=$(System.PullRequest.SourceBranch)
+          sonar.pullrequest.base=$(System.PullRequest.TargetBranch)
+
+- task: SonarCloudAnalyze@3
+  displayName: 'Run Sonar Code Analysis'
+  inputs:
+    jdkversion: 'JAVA_HOME_21_X64'
+  
+- task: SonarCloudPublish@3
+  displayName: 'Publish Sonar Quality Gate Result'
+  continueOnError: ${{ ne(variables['Build.Reason'], 'PullRequest') }}
+  inputs:
+    pollingTimeoutSec: '300'          

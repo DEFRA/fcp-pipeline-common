@@ -1,0 +1,3 @@
+variables:
+- group: fcp-pipeline-common-variables
+- group: fcp-pipeline-common-secrets
