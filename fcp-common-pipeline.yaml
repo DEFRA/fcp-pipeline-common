@@ -1,26 +1,67 @@
+parameters:
+  - name: appFrameworkType
+    type: string
+    default: "nodejs"
+
+resources:
+  repositories:
+    - repository: FcpPipelineCommon
+      name: DEFRA/fcp-pipeline-common
+      endpoint: DEFRA-ADP
+      type: github
+      ref: pl-5-ado-sonar
+
+variables:
+  appName: $[replace(variables['Build.Repository.Name'], 'DEFRA/', '')]
 
 stages:
-- stage: init
-  displayName: 'Init Stage'
-  jobs:
-  - job: prepare_workspace
-    displayName: 'Prepare and Init Workspace'
-    steps:
+  - stage: init
+    displayName: "Init Stage"
+    jobs:
+      - job: appVersion
+        displayName: "Get App Version"
+        steps:
+          - script: |
+              echo APP_NAME=$(APP_NAME)
+            displayName: "Set App Version"
+          - template: /ado-pipeline/init/app-version.yaml
+            parameters:
+              appFrameworkType: ${{ parameters.appFrameworkType }}
 
-    - script: |
-        echo -e "\033[0;32mRepository: $(Build.Repository.Name)\033[0m"
-        echo -e "\033[0;33mBranch: $(Build.SourceBranchName)\033[0m"
-      displayName: 'Print repo and branch'
+      - job: prepare_workspace
+        displayName: "Prepare and Init Workspace"
+        steps:
+          - script: |
+              echo -e "\033[0;32mRepository: $(Build.Repository.Name)\033[0m"
+              echo -e "\033[0;33mBranch: $(Build.SourceBranchName)\033[0m"
+            displayName: "Print repo and branch"
 
-- stage: Build
-  displayName: 'Build Stage'
-  jobs:
-  - job: Job1
-    displayName: 'Job'
-    steps:
-    - script: |
-        echo Step 1
-      displayName: 'Step 1'
-    - script: |
-        echo Step 2
-      displayName: 'Step 2'
+  - stage: Build
+    displayName: "Build Stage"
+    jobs:
+      - job: Job1
+        displayName: "Job"
+        steps:
+          - script: |
+              echo Step 1
+            displayName: "Step 1"
+          - script: |
+              echo Step 2
+            displayName: "Step 2"
+
+  - stage: stage
+    displayName: "Stage"
+    variables:
+      - template: variables.yml
+    jobs:
+      - job: Job1
+        displayName: "Job "
+        steps:
+          - checkout: self
+          - checkout: FcpPipelineCommon
+          - template: /ado-pipeline/stage/sonar-cloud.yaml
+            parameters:
+              appFrameworkType: ${{ parameters.appFrameworkType }}
+          - script: |
+              echo Step 2
+            displayName: "Step 2"
