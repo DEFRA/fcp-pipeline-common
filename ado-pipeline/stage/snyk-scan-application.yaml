@@ -1,0 +1,38 @@
+parameters:
+  - name: appFrameworkType
+    type: string    
+  - name: snykOrganizationName
+    type: string
+    default: 'defra-ffc'
+  - name: failOnThreshold
+    type: string
+    default: 'high'
+  - name: manifestPath
+    type: string
+    default: ''        
+  - name: snykPolicyFilePath
+    type: string
+    default: './.snyk'  
+
+steps:
+- ${{ each projectManifestPath in split(parameters.manifestPath, ';') }}:
+  - task: SnykSecurityScan@1
+    displayName: 'Snyk Application scan'
+    inputs:
+      serviceConnectionEndpoint: 'AZD-FFC-SNYK'
+      testDirectory: '$(appName)'      
+      failOnIssues: true
+      monitorOnBuild: false
+      failOnThreshold: '${{ parameters.failOnThreshold }}'
+      projectName: '$(appName)'
+      organization: '${{ parameters.snykOrganizationName }}'
+      additionalArguments: '--policy-path=${{ parameters.snykPolicyFilePath }}'
+      ${{ if eq(parameters.appBuildConfig.appFrameworkType, 'java') }}:
+        testType: code
+        codeSeverityThreshold: 'high'
+      ${{ else  }}:
+        severityThreshold: ${{ parameters.failOnThreshold }}
+        ${{ if ne(projectManifestPath, '') }}:
+          targetFile: '${{ projectManifestPath }}'
+    enabled: true
+    continueOnError: ${{ ne(variables['Build.Reason'], 'PullRequest') }}

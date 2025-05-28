@@ -1,9 +1,6 @@
 parameters:
   - name: appFrameworkType
     type: string
-  - name: appRootDir
-    type: string
-    default: '.'
   - name: lcovReportPaths
     type: string
     default: './test-output/lcov.info'
