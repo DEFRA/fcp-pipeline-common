@@ -1,0 +1,38 @@
+parameters:
+  - name: appFrameworkType
+    type: string
+  - name: acrRepoName
+    type: string   
+  - name: acrRepoTagVersion
+    type: string
+  - name: snykOrganizationName
+    type: string
+    default: 'defra-ffc'
+  - name: failOnThreshold
+    type: string
+    default: 'high'
+  - name: dockerfilePath
+    type: string
+    default: './Dockerfile'
+  - name: snykPolicyFilePath
+    type: string
+    default: './.snyk'
+   
+
+steps:
+- task: SnykSecurityScan@1
+  displayName: 'Snyk containter scan'
+  inputs:
+    serviceConnectionEndpoint: 'AZD-FFC-SNYK'
+    testType: 'container'
+    dockerImageName:  ${{ parameters.acrRepoName }}:${{ parameters.acrRepoTagVersion }}
+    dockerfilePath: '${{ parameters.dockerfilePath }}'
+    monitorOnBuild: false
+    failOnIssues: ${{ eq(variables['Build.Reason'], 'PullRequest') }}
+    projectName: '${{ parameters.acrRepoName }}'
+    organization: '${{ parameters.snykOrganizationName }}'
+    failOnThreshold: '${{ parameters.failOnThreshold }}'
+    severityThreshold: ${{ parameters.failOnThreshold }}
+    additionalArguments: '--policy-path=${{ parameters.snykPolicyFilePath }} --exclude-base-image-vulns'
+  enabled: true
+  continueOnError: ${{ ne(variables['Build.Reason'], 'PullRequest') }}

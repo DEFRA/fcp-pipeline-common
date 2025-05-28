@@ -9,7 +9,6 @@ resources:
       name: DEFRA/fcp-pipeline-common
       endpoint: DEFRA-ADP
       type: github
-      ref: pl-5-ado-sonar
 
 variables:
   appName: $[replace(variables['Build.Repository.Name'], 'DEFRA/', '')]
@@ -54,14 +53,21 @@ stages:
     variables:
       - template: variables.yml
     jobs:
-      - job: Job1
-        displayName: "Job "
+      - job: SnyckScanApplication
+        displayName: "Snyk Application Scan"
+        steps:
+          - checkout: self
+          - checkout: FcpPipelineCommon
+            displayName: "Snyk Application Scan"
+          - template: /ado-pipeline/stage/snyk-scan-application.yaml
+            parameters:
+              appFrameworkType: ${{ parameters.appFrameworkType }}
+      - job: SonarCloud
+        displayName: "SonarCloud Analysis"
         steps:
           - checkout: self
           - checkout: FcpPipelineCommon
           - template: /ado-pipeline/stage/sonar-cloud.yaml
             parameters:
               appFrameworkType: ${{ parameters.appFrameworkType }}
-          - script: |
-              echo Step 2
-            displayName: "Step 2"
+
