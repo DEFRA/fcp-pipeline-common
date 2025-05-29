@@ -1,0 +1,4 @@
+steps:
+- script: |
+    echo "Building DotNet application..."
+  displayName: "Build DotNet"

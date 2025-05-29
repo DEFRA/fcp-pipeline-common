@@ -37,16 +37,17 @@ stages:
 
   - stage: Build
     displayName: "Build Stage"
+    variables:
+      - template: variables.yml
     jobs:
-      - job: Job1
-        displayName: "Job"
+      - job: BuildingApplication
+        displayName: "Build"
         steps:
-          - script: |
-              echo Step 1
-            displayName: "Step 1"
-          - script: |
-              echo Step 2
-            displayName: "Step 2"
+          - checkout: self
+          - checkout: FcpPipelineCommon
+          - template: /ado-pipeline/build/build-${{ parameters.appFrameworkType }}.yaml
+            parameters:
+              appFrameworkType: ${{ parameters.appFrameworkType }}
 
   - stage: stage
     displayName: "Stage"
@@ -58,7 +59,6 @@ stages:
         steps:
           - checkout: self
           - checkout: FcpPipelineCommon
-            displayName: "Snyk Application Scan"
           - template: /ado-pipeline/stage/snyk-scan-application.yaml
             parameters:
               appFrameworkType: ${{ parameters.appFrameworkType }}

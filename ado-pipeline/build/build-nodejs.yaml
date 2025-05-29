@@ -1,0 +1,4 @@
+steps:
+- script: |
+    echo "Building NodeJs application..."
+  displayName: "Build NodeJs"
