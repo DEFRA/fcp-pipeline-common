@@ -1,4 +1,73 @@
+parameters:
+  - name: frameworkVersion
+    displayName: NodeJS Version
+    type: string   
+    default: '22.x'
+  - name: packageFeedName
+    type: string
+    default: ''
+  - name: failOnThreshold
+    type: string
+    default: 'moderate'  
+ 
 steps:
-- script: |
-    echo "Building NodeJs application..."
-  displayName: "Build NodeJs"
+- ${{ if ne(parameters.frameworkVersion, '') }}:  
+  - task: NodeTool@0
+    displayName: 'Use Node ${{ parameters.frameworkVersion }} '
+    inputs:
+      versionSpec: ${{ parameters.frameworkVersion }}
+      checkLatest: true 
+    enabled: true #this step takes long time to download nodejs file  
+- bash: |
+    echo "##vso[task.setvariable variable=COOKIE_PASSWORD;]$RANDOM"
+  displayName: 'Generate Random COOKIE_PASSWORD for test'
+
+- task: Npm@1
+  displayName: 'npm ci'
+  inputs:
+    command: custom
+    workingDir: '$(appName)'
+    customCommand: 'ci --legacy-peer-deps'
+    verbose: false
+    ${{ if ne(parameters.packageFeedName, '') }}:
+      customRegistry: useFeed
+      customFeed: ${{ parameters.packageFeedName }}
+           
+- task: Npm@1
+  displayName: 'npm audit'
+  inputs:
+    command: custom
+    workingDir: '$(appName)'
+    verbose: false
+    customCommand: 'audit -audit-level=${{ parameters.failOnThreshold }} --omit=dev' 
+  continueOnError: ${{ ne(variables['Build.Reason'], 'PullRequest') }}
+
+- task: Npm@1
+  displayName: 'npm lint'
+  inputs:
+    command: custom
+    workingDir: '$(appName)'
+    verbose: false
+    customCommand: 'run --if-present test:lint'
+  continueOnError: ${{ ne(variables['Build.Reason'], 'PullRequest') }}
+
+- task: Npm@1
+  displayName: 'npm build'
+  inputs:
+    command: custom
+    workingDir: '$(appName)'
+    verbose: false
+    customCommand: 'run --if-present build'
+
+- task: Npm@1
+  displayName: 'npm unit test'
+  inputs:
+    command: custom
+    workingDir: '$(appName)'
+    verbose: false
+    customCommand: 'run --if-present test:unit'
+
+- task: PublishCodeCoverageResults@2
+  inputs:
+    codeCoverageTool: 'Cobertura'
+    summaryFileLocation: '$(appName)/test-output/cobertura-coverage.xml'
