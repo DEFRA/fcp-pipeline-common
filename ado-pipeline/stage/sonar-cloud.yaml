@@ -3,10 +3,10 @@ parameters:
     type: string
   - name: lcovReportPaths
     type: string
-    default: './test-output/lcov.info'
+    default: 'test-output/lcov.info'
   - name: xmlReportPaths
     type: string
-    default: './test-output/xmlReport.xml'    
+    default: 'test-output/junit.xml'    
 
 steps:
 - script: |
@@ -36,6 +36,7 @@ steps:
       projectVersion: $(appVersion)
       ${{ if ne(variables['Build.Reason'], 'PullRequest') }}:
         extraProperties: |
+          sonar.projectBaseDir=$(appName)
           sonar.cs.opencover.reportsPaths=**/coverage.opencover.xml
           sonar.cs.vstest.reportsPaths=$(Agent.TempDirectory)/*.trx
           sonar.cs.vscoveragexml.reportsPaths=$(Agent.TempDirectory)/**/*.coverage
@@ -43,6 +44,7 @@ steps:
           sonar.qualitygate.wait=true
       ${{ if eq(variables['Build.Reason'], 'PullRequest') }}:
         extraProperties: |
+          sonar.projectBaseDir=$(appName)
           sonar.pullrequest.key=$(System.PullRequest.PullRequestNumber)
           sonar.pullrequest.branch=$(System.PullRequest.SourceBranch)
           sonar.pullrequest.base=$(System.PullRequest.TargetBranch)
@@ -56,19 +58,21 @@ steps:
       scannerMode: cli
       configFile: '$(appName)/sonar-project.properties'
       ${{ if ne(variables['Build.Reason'], 'PullRequest') }}:
-        extraProperties: |      
+        extraProperties: |
+          sonar.projectBaseDir=$(appName)
           sonar.projectKey=$(appName)
           sonar.projectName=$(appName)
           sonar.projectVersion=$(appVersion)
-          sonar.javascript.lcov.reportPaths=$(appName)/${{ parameters.lcovReportPaths }}
-          sonar.coverage.jacoco.xmlReportPaths=$(appName)/${{ parameters.xmlReportPaths }}
+          sonar.javascript.lcov.reportPaths=${{ parameters.lcovReportPaths }}
+          sonar.coverage.jacoco.xmlReportPaths=${{ parameters.xmlReportPaths }}
       ${{ if eq(variables['Build.Reason'], 'PullRequest') }}:
         extraProperties: |
+          sonar.projectBaseDir=$(appName)
           sonar.projectKey=$(appName)
           sonar.projectName=$(appName)
           sonar.projectVersion=$(appVersion)
-          sonar.javascript.lcov.reportPaths=$(appName)/${{ parameters.lcovReportPaths }}
-          sonar.coverage.jacoco.xmlReportPaths=$(appName)/${{ parameters.xmlReportPaths }}
+          sonar.javascript.lcov.reportPaths=${{ parameters.lcovReportPaths }}
+          sonar.coverage.jacoco.xmlReportPaths=${{ parameters.xmlReportPaths }}
           sonar.pullrequest.key=$(System.PullRequest.PullRequestNumber)
           sonar.pullrequest.branch=$(System.PullRequest.SourceBranch)
           sonar.pullrequest.base=$(System.PullRequest.TargetBranch)
@@ -77,11 +81,13 @@ steps:
       scannerMode: 'Other'
       ${{ if ne(variables['Build.Reason'], 'PullRequest') }}:
         extraProperties: |
+          sonar.projectBaseDir=$(appName)
           sonar.projectKey=$(appName)
           sonar.projectName=$(appName)
           sonar.projectVersion=$(appVersion)
       ${{ if eq(variables['Build.Reason'], 'PullRequest') }}:
         extraProperties: |
+          sonar.projectBaseDir=$(appName)
           sonar.projectKey=$(appName)
           sonar.projectName=$(appName)
           sonar.projectVersion=$(appVersion)

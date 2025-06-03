@@ -46,8 +46,6 @@ stages:
           - checkout: self
           - checkout: FcpPipelineCommon
           - template: /ado-pipeline/build/build-${{ parameters.appFrameworkType }}.yaml
-            parameters:
-              appFrameworkType: ${{ parameters.appFrameworkType }}
 
   - stage: stage
     displayName: "Stage"
