@@ -1,7 +1,7 @@
 parameters:
   - name: appFrameworkType
     type: string
-    default: "helm"
+    default: "nodejs"
 
 resources:
   repositories:
