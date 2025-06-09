@@ -1,0 +1,4 @@
+steps:
+  - script: |
+      echo "Checking Helm Chart..."
+    displayName: "Build Helm"
