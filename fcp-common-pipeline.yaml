@@ -68,3 +68,11 @@ stages:
           - template: /ado-pipeline/stage/sonar-cloud.yaml
             parameters:
               appFrameworkType: ${{ parameters.appFrameworkType }}
+      - job: HelmTemplate
+        displayName: "Build Helm Template"
+        steps:
+          - checkout: self
+          - checkout: FcpPipelineCommon
+          - template: /ado-pipeline/stage/build-helm.yaml
+            parameters:
+              appFrameworkType: ${{ parameters.appFrameworkType }}
