@@ -1,7 +1,7 @@
 parameters:
   - name: appFrameworkType
     type: string
-    default: "nodejs"
+    default: "helm"
 
 resources:
   repositories:
@@ -68,4 +68,3 @@ stages:
           - template: /ado-pipeline/stage/sonar-cloud.yaml
             parameters:
               appFrameworkType: ${{ parameters.appFrameworkType }}
-
