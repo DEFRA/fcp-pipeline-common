@@ -2,6 +2,12 @@ parameters:
   - name: appFrameworkType
     type: string
     default: "nodejs"
+  - name: Type
+    type: string
+    default: 'kubernetes' # kubernetes, npm, functions, Nuget etc.    
+  - name: npmLegacyPeerDeps
+    type: boolean
+    default: false
 
 resources:
   repositories:
@@ -46,6 +52,8 @@ stages:
           - checkout: self
           - checkout: FcpPipelineCommon
           - template: /ado-pipeline/build/build-${{ parameters.appFrameworkType }}.yaml
+            parameters:
+              npmLegacyPeerDeps: ${{ parameters.npmLegacyPeerDeps }}
 
   - stage: stage
     displayName: "Stage"
@@ -68,4 +76,18 @@ stages:
           - template: /ado-pipeline/stage/sonar-cloud.yaml
             parameters:
               appFrameworkType: ${{ parameters.appFrameworkType }}
+
+  - stage: Deployment
+    displayName: "Deployment Stage"
+    variables:
+      - template: variables.yml
+    jobs:
+      - job: Deploy
+        displayName: "Deploy"
+        condition: succeeded() 
+        steps:
+          - checkout: self
+          - checkout: FcpPipelineCommon
+          - template: /ado-pipeline/deploy/deploy-${{ parameters.type }}.yaml
+
 

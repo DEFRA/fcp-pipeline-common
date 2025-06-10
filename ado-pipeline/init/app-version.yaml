@@ -9,9 +9,9 @@ steps:
 
 - task: NodeTool@0
   condition: ${{ eq(parameters.appFrameworkType, 'nodejs') }}
-  inputs:
-    versionSpec: '22.x'
   displayName: 'Install Node.js'
+  inputs:
+    checkLatest: true
 
 - script: |
     npmVersionString=$(node -p "require('./package.json').version") 

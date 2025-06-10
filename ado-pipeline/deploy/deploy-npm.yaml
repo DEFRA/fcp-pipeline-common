@@ -1,0 +1,27 @@
+  # parameters:
+  #   - name: appFrameworkType
+  #     type: string
+ 
+
+
+steps:
+- task: NodeTool@0
+  displayName: 'Install Node.js'
+  inputs:
+    checkLatest: true
+
+- script: |
+    echo "##vso[task.setvariable variable=appVersion]$(Build.BuildNumber)"
+  displayName: "Set App Version"
+
+- script: |
+    echo "//registry.npmjs.org/:_authToken=$(npm-publish-token)" > $(appName)/.npmrc
+  displayName: 'Set NPM Auth Token'
+
+- script: |
+   cd $(appName)
+   npm version $(appVersion)
+   npm publish
+   cd ..
+  displayName: Publish  
+
