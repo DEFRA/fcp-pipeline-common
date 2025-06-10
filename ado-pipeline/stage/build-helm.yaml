@@ -2,3 +2,12 @@ steps:
   - script: |
       echo "Checking Helm Chart..."
     displayName: "Build Helm"
+
+  # Check if Helm is installed and print version
+  - script: |
+      if ! command -v helm &> /dev/null; then
+        echo "Helm is not installed. Please install Helm to proceed."
+        exit 1
+      fi
+      helm version --short
+    displayName: "Check Helm Installation"
