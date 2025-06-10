@@ -28,15 +28,13 @@ steps:
         echo "Chart.yaml file exists."
       else
         echo "Chart.yaml file does not exist"
+        ls -la
         exit 1
       fi
-
-      ls -la
-
     displayName: "Check Helm Chart Directory"
 
-  # # Lint the Helm chart
-  # - script: |
-  #     cd helm/$(Build.Repository.Name)
-  #     helm lint .
-  #   displayName: "Lint Helm Chart"
+  # Lint the Helm chart
+  - script: |
+      cd "$HELM_CHART_PATH"
+      helm lint .
+    displayName: "Lint Helm Chart"
