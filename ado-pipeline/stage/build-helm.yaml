@@ -26,15 +26,10 @@ steps:
 
       if [ -f "Chart.yaml" ]; then
         echo "Chart.yaml file exists."
+        helm lint .
       else
         echo "Chart.yaml file does not exist"
         ls -la
         exit 1
       fi
     displayName: "Check Helm Chart Directory"
-
-  # Lint the Helm chart
-  - script: |
-      cd "$HELM_CHART_PATH"
-      helm lint .
-    displayName: "Lint Helm Chart"
