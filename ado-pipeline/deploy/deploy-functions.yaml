@@ -1,0 +1,10 @@
+  # parameters:
+  #   - name: appFrameworkType
+  #     type: string
+ 
+
+steps:
+- script: |
+    echo "deploy to functions"
+  displayName: "Deploy to functions"
+  
