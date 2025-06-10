@@ -28,6 +28,9 @@ steps:
         echo "Chart.yaml file exists."
         helm dependency update
         helm lint .
+
+        # Template the chart to see what gets rendered
+        helm template "$REPO_NAME" .
       else
         echo "Chart.yaml file does not exist"
         ls -la
