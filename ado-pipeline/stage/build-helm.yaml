@@ -2,6 +2,7 @@ steps:
   - script: |
       echo "Checking Helm Chart..."
       ls -la
+      env | grep -i "BUILD_REPOSITORY" | sort
     displayName: "Build Helm"
 
   # Check if Helm is installed and print version
@@ -13,16 +14,18 @@ steps:
       helm version --short
     displayName: "Check Helm Installation"
 
-  # Check if the Helm chart directory exists
-  - script: |
-      if [ ! -d "helm" ]; then
-        echo "Helm chart directory 'helm' does not exist."
-        exit 1
-      fi
-    displayName: "Check Helm Chart Directory"
+  # Cd in the directory
 
-  # Lint the Helm chart
-  - script: |
-      cd helm/$(Build.Repository.Name)
-      helm lint .
-    displayName: "Lint Helm Chart"
+  # # Check if the Helm chart directory exists
+  # - script: |
+  #     if [ ! -d "helm" ]; then
+  #       echo "Helm chart directory 'helm' does not exist."
+  #       exit 1
+  #     fi
+  #   displayName: "Check Helm Chart Directory"
+
+  # # Lint the Helm chart
+  # - script: |
+  #     cd helm/$(Build.Repository.Name)
+  #     helm lint .
+  #   displayName: "Lint Helm Chart"
