@@ -1,6 +1,7 @@
 steps:
   - script: |
       echo "Checking Helm Chart..."
+      ls -la
     displayName: "Build Helm"
 
   # Check if Helm is installed and print version
