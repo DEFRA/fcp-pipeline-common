@@ -14,15 +14,24 @@ steps:
       helm version --short
     displayName: "Check Helm Installation"
 
-  # Cd in the directory
+  # Check if the Helm chart directory exists
+  - script: |
+      REPO_NAME=$(echo "$BUILD_REPOSITORY_NAME" | cut -d'/' -f2)
+      echo "Repository Name: $REPO_NAME"
 
-  # # Check if the Helm chart directory exists
-  # - script: |
-  #     if [ ! -d "helm" ]; then
-  #       echo "Helm chart directory 'helm' does not exist."
-  #       exit 1
-  #     fi
-  #   displayName: "Check Helm Chart Directory"
+      HELM_CHART_PATH="$(Agent.BuildDirectory)/s/$REPO_NAME/helm/$REPO_NAME"
+      echo "Helm Chart Path: $HELM_CHART_PATH"
+
+      if [ -f "Chart.yaml" ]; then
+        echo "Chart.yaml file exists."
+      else
+        echo "Chart.yaml file does not exist"
+        exit 1
+      fi
+
+      ls -la
+
+    displayName: "Check Helm Chart Directory"
 
   # # Lint the Helm chart
   # - script: |
