@@ -40,13 +40,6 @@ stages:
 
           - template: /ado-pipeline/build/build-${{ parameters.appFrameworkType }}.yaml
 
-          # Share source code for later stages
-          - task: PublishPipelineArtifact@1
-            inputs:
-              targetPath: "$(Build.SourcesDirectory)"
-              artifact: "source-code"
-            displayName: "Share source code for later stages"
-
   - stage: Check
     displayName: "Check"
     dependsOn: Build
