@@ -56,9 +56,8 @@ stages:
       - job: SnyckScanApplication
         displayName: "Snyk Application Scan"
         steps:
-          - checkout: none
-          - download: current
-            artifact: source-code
+          - checkout: self
+          - checkout: FcpPipelineCommon
           - template: /ado-pipeline/stage/snyk-scan-application.yaml
             parameters:
               appFrameworkType: ${{ parameters.appFrameworkType }}
@@ -66,9 +65,8 @@ stages:
       - job: SonarCloud
         displayName: "SonarCloud Analysis"
         steps:
-          - checkout: none
-          - download: current
-            artifact: source-code
+          - checkout: self
+          - checkout: FcpPipelineCommon
           - template: /ado-pipeline/stage/sonar-cloud.yaml
             parameters:
               appFrameworkType: ${{ parameters.appFrameworkType }}
@@ -76,9 +74,8 @@ stages:
       - job: HelmTemplate
         displayName: "Build Helm Template"
         steps:
-          - checkout: none
-          - download: current
-            artifact: source-code
+          - checkout: self
+          - checkout: FcpPipelineCommon
           - template: /ado-pipeline/stage/build-helm.yaml
             parameters:
               appFrameworkType: ${{ parameters.appFrameworkType }}
