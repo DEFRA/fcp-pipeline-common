@@ -29,6 +29,8 @@ stages:
 
           - script: |
               echo APP_NAME=$(appName)
+              ls -la
+              env | grep -i "BUILD_REPOSITORY" | sort
             displayName: "Set App Version"
 
           - template: /ado-pipeline/init/app-version.yaml
