@@ -23,11 +23,13 @@ steps:
   - script: |
       echo Todo: set build number
       echo "##vso[build.updatebuildnumber]0.0.0"
+    workingDirectory: "$(Build.SourcesDirectory)/$(appName)"
     condition: ${{ eq(parameters.appFrameworkType, 'dotnet') }}
     displayName: "set build number"
 
   - script: |
       echo Todo: set build number
       echo "##vso[build.updatebuildnumber]0.0.0"
+    workingDirectory: "$(Build.SourcesDirectory)/$(appName)"
     condition: ${{ eq(parameters.appFrameworkType, 'java') }}
     displayName: "set build number"

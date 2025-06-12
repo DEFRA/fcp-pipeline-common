@@ -30,17 +30,13 @@ stages:
           - script: |
               echo APP_NAME=$(appName)
               ls -la
-              env | grep -i "BUILD_REPOSITORY" | sort
-            displayName: "Set App Version"
+              env | grep -i "BUILD_REPOSITORY_NAME"
+              echo -e "\033[0;33mBranch: $(Build.SourceBranchName)\033[0m"
+            displayName: "Build and Workspace Info"
 
           - template: /ado-pipeline/init/app-version.yaml
             parameters:
               appFrameworkType: ${{ parameters.appFrameworkType }}
-
-          - script: |
-              echo -e "\033[0;32mRepository: $(Build.Repository.Name)\033[0m"
-              echo -e "\033[0;33mBranch: $(Build.SourceBranchName)\033[0m"
-            displayName: "Print repo and branch"
 
           - template: /ado-pipeline/build/build-${{ parameters.appFrameworkType }}.yaml
 
