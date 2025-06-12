@@ -40,32 +40,45 @@ stages:
 
           - template: /ado-pipeline/build/build-${{ parameters.appFrameworkType }}.yaml
 
-  - stage: stage
-    displayName: "Stage"
+          # Share source code for later stages
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: "$(Build.SourcesDirectory)"
+              artifact: "source-code"
+            displayName: "Share source code for later stages"
+
+  - stage: Check
+    displayName: "Check"
+    dependsOn: Build
     variables:
       - template: variables.yml
     jobs:
       - job: SnyckScanApplication
         displayName: "Snyk Application Scan"
         steps:
-          - checkout: self
-          - checkout: FcpPipelineCommon
+          - checkout: none
+          - download: current
+            artifact: source-code
           - template: /ado-pipeline/stage/snyk-scan-application.yaml
             parameters:
               appFrameworkType: ${{ parameters.appFrameworkType }}
+
       - job: SonarCloud
         displayName: "SonarCloud Analysis"
         steps:
-          - checkout: self
-          - checkout: FcpPipelineCommon
+          - checkout: none
+          - download: current
+            artifact: source-code
           - template: /ado-pipeline/stage/sonar-cloud.yaml
             parameters:
               appFrameworkType: ${{ parameters.appFrameworkType }}
+
       - job: HelmTemplate
         displayName: "Build Helm Template"
         steps:
-          - checkout: self
-          - checkout: FcpPipelineCommon
+          - checkout: none
+          - download: current
+            artifact: source-code
           - template: /ado-pipeline/stage/build-helm.yaml
             parameters:
               appFrameworkType: ${{ parameters.appFrameworkType }}
