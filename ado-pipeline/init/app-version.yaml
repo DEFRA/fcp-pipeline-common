@@ -3,30 +3,31 @@ parameters:
     type: string
 
 steps:
-- script: |
-    echo "Extracting The App Version...."
-  displayName: "App Version"
+  - script: |
+      echo "Extracting The App Version...."
+    displayName: "App Version"
 
-- task: NodeTool@0
-  condition: ${{ eq(parameters.appFrameworkType, 'nodejs') }}
-  inputs:
-    versionSpec: '22.x'
-  displayName: 'Install Node.js'
+  - task: NodeTool@0
+    condition: ${{ eq(parameters.appFrameworkType, 'nodejs') }}
+    inputs:
+      versionSpec: "22.x"
+    displayName: "Install Node.js"
 
-- script: |
-    npmVersionString=$(node -p "require('./package.json').version") 
-    echo "##vso[build.updatebuildnumber]$npmVersionString"
-  condition: ${{ eq(parameters.appFrameworkType, 'nodejs') }}
-  displayName: 'set build number'
+  - script: |
+      npmVersionString=$(node -p "require('./package.json').version")
+      echo "##vso[build.updatebuildnumber]$npmVersionString"
+    workingDirectory: "$(Build.SourcesDirectory)/$(Build.Repository.Name)"
+    condition: ${{ eq(parameters.appFrameworkType, 'nodejs') }}
+    displayName: "set build number"
 
-- script: |
-    echo Todo: set build number 
-    echo "##vso[build.updatebuildnumber]0.0.0"
-  condition: ${{ eq(parameters.appFrameworkType, 'dotnet') }}
-  displayName: 'set build number'
+  - script: |
+      echo Todo: set build number
+      echo "##vso[build.updatebuildnumber]0.0.0"
+    condition: ${{ eq(parameters.appFrameworkType, 'dotnet') }}
+    displayName: "set build number"
 
-- script: |
-    echo Todo: set build number 
-    echo "##vso[build.updatebuildnumber]0.0.0"
-  condition: ${{ eq(parameters.appFrameworkType, 'java') }}
-  displayName: 'set build number'
+  - script: |
+      echo Todo: set build number
+      echo "##vso[build.updatebuildnumber]0.0.0"
+    condition: ${{ eq(parameters.appFrameworkType, 'java') }}
+    displayName: "set build number"
