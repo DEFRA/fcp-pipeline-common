@@ -21,14 +21,14 @@ stages:
 
     jobs:
       - job: buildJob
-        displayName: "Get App Version"
+        displayName: "Build Application"
 
         steps:
           - checkout: self
           - checkout: FcpPipelineCommon
 
           - script: |
-              echo APP_NAME=$(APP_NAME)
+              echo APP_NAME=$(appName)
             displayName: "Set App Version"
 
           - template: /ado-pipeline/init/app-version.yaml
