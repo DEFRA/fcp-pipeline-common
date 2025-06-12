@@ -16,7 +16,7 @@ steps:
   - script: |
       npmVersionString=$(node -p "require('./package.json').version")
       echo "##vso[build.updatebuildnumber]$npmVersionString"
-    workingDirectory: "$(Build.SourcesDirectory)/$(Build.Repository.Name)"
+    workingDirectory: "$(Build.SourcesDirectory)/$(appName)"
     condition: ${{ eq(parameters.appFrameworkType, 'nodejs') }}
     displayName: "set build number"
 
