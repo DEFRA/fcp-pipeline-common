@@ -14,8 +14,11 @@ variables:
   appName: $[replace(variables['Build.Repository.Name'], 'DEFRA/', '')]
 
 stages:
-  - stage: init
-    displayName: "Init Stage"
+  - stage: Build
+    displayName: "Build Stage"
+    variables:
+      - template: variables.yml
+
     jobs:
       - job: appVersion
         displayName: "Get App Version"
@@ -35,11 +38,6 @@ stages:
               echo -e "\033[0;33mBranch: $(Build.SourceBranchName)\033[0m"
             displayName: "Print repo and branch"
 
-  - stage: Build
-    displayName: "Build Stage"
-    variables:
-      - template: variables.yml
-    jobs:
       - job: BuildingApplication
         displayName: "Build"
         steps:
