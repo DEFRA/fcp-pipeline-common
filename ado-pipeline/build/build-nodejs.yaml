@@ -9,8 +9,13 @@ parameters:
   - name: failOnThreshold
     type: string
     default: 'moderate'  
+  - name: npmLegacyPeerDeps
+    type: boolean  
+    
+
  
 steps:
+
 - ${{ if ne(parameters.frameworkVersion, '') }}:  
   - task: NodeTool@0
     displayName: 'Use Node ${{ parameters.frameworkVersion }} '
@@ -18,16 +23,16 @@ steps:
       versionSpec: ${{ parameters.frameworkVersion }}
       checkLatest: true 
     enabled: true #this step takes long time to download nodejs file  
-- bash: |
-    echo "##vso[task.setvariable variable=COOKIE_PASSWORD;]$RANDOM"
-  displayName: 'Generate Random COOKIE_PASSWORD for test'
 
 - task: Npm@1
   displayName: 'npm ci'
   inputs:
     command: custom
     workingDir: '$(appName)'
-    customCommand: 'ci --legacy-peer-deps'
+    ${{ if eq(parameters.npmLegacyPeerDeps, true) }}:
+      customCommand: 'ci --legacy-peer-deps'
+    ${{ else }}:
+      customCommand: 'ci'
     verbose: false
     ${{ if ne(parameters.packageFeedName, '') }}:
       customRegistry: useFeed

@@ -1,0 +1,37 @@
+# parameters:
+#   - name: appFrameworkType
+#     type: string
+
+steps:
+  - task: NodeTool@0
+    displayName: "Install Node.js"
+    inputs:
+      checkLatest: true
+
+  - bash: |
+      echo appVersion is $(releaseVersion)
+      echo buildVer is $(buildVer)
+      echo isMainBranch is $(isMainBranch)
+
+      git config --global user.email "ffc@defra.gov.uk"
+      git config --global user.name "FCP ADO Pipeline"
+
+      cd $(appName)
+
+      echo "//registry.npmjs.org/:_authToken=$(npm-publish-token)" > .npmrc
+
+      npm ci --ignore-scripts --omit=dev
+
+      if [[ "$(isMainBranch)" == "true" ]]; then
+        echo version is $(releaseVersion)
+        npm publish
+      else
+        version="$(releaseVersion)-alpha.$(buildVer)"
+        echo version is $version
+        npm version $version
+        npm publish --tag next
+      fi
+
+      [ -f npm-debug.log ] && cat npm-debug.log
+      cd ..
+    displayName: Publish

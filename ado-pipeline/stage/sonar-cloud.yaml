@@ -9,12 +9,9 @@ parameters:
     default: 'test-output/junit.xml'    
 
 steps:
-- script: |
-    echo "##vso[task.setvariable variable=appVersion]$(Build.BuildNumber)"
-  displayName: "Set App Version"
 
 - script: |
-    echo "Creating the project $(appName) version $(appVersion) in the Sonar Cloud if it is not there"
+    echo "Creating the project $(appName) version $(releaseVersion) in the Sonar Cloud if it is not there"
     SYSTEM_DEBUG=true ./fcp-pipeline-common/ado-pipeline/stage/scripts/set-sonarCloud.sh \
     -r $(appName) \
     -k $(SONAR-API-KEY)
@@ -33,7 +30,7 @@ steps:
       dotnetScannerVersion: '8.0'
       projectKey: $(appName)
       projectName: $(appName)
-      projectVersion: $(appVersion)
+      projectVersion: $(releaseVersion)
       ${{ if ne(variables['Build.Reason'], 'PullRequest') }}:
         extraProperties: |
           sonar.projectBaseDir=$(appName)
@@ -62,7 +59,7 @@ steps:
           sonar.projectBaseDir=$(appName)
           sonar.projectKey=$(appName)
           sonar.projectName=$(appName)
-          sonar.projectVersion=$(appVersion)
+          sonar.projectVersion=$(releaseVersion)
           sonar.javascript.lcov.reportPaths=${{ parameters.lcovReportPaths }}
           sonar.coverage.jacoco.xmlReportPaths=${{ parameters.xmlReportPaths }}
       ${{ if eq(variables['Build.Reason'], 'PullRequest') }}:
@@ -70,7 +67,7 @@ steps:
           sonar.projectBaseDir=$(appName)
           sonar.projectKey=$(appName)
           sonar.projectName=$(appName)
-          sonar.projectVersion=$(appVersion)
+          sonar.projectVersion=$(releaseVersion)
           sonar.javascript.lcov.reportPaths=${{ parameters.lcovReportPaths }}
           sonar.coverage.jacoco.xmlReportPaths=${{ parameters.xmlReportPaths }}
           sonar.pullrequest.key=$(System.PullRequest.PullRequestNumber)
@@ -84,13 +81,13 @@ steps:
           sonar.projectBaseDir=$(appName)
           sonar.projectKey=$(appName)
           sonar.projectName=$(appName)
-          sonar.projectVersion=$(appVersion)
+          sonar.projectVersion=$(releaseVersion)
       ${{ if eq(variables['Build.Reason'], 'PullRequest') }}:
         extraProperties: |
           sonar.projectBaseDir=$(appName)
           sonar.projectKey=$(appName)
           sonar.projectName=$(appName)
-          sonar.projectVersion=$(appVersion)
+          sonar.projectVersion=$(releaseVersion)
           sonar.pullrequest.key=$(System.PullRequest.PullRequestNumber)
           sonar.pullrequest.branch=$(System.PullRequest.SourceBranch)
           sonar.pullrequest.base=$(System.PullRequest.TargetBranch)
