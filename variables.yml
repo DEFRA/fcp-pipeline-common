@@ -1,3 +1,9 @@
 variables:
-- group: fcp-pipeline-common-variables
-- group: fcp-pipeline-common-secrets
+  - group: fcp-pipeline-common-variables
+  - group: fcp-pipeline-common-secrets
+  - name: releaseVersion
+    value: $[ stageDependencies.Init.AppVersionExtraction.outputs['AppVersionTask.ReleaseVersion'] ]
+  - name: buildVer
+    value: $[ stageDependencies.Init.AppVersionExtraction.outputs['AppVersionTask.BuildVer'] ]
+  - name: isMainBranch
+    value: ${{eq(variables['Build.SourceBranch'], 'refs/heads/main')}}

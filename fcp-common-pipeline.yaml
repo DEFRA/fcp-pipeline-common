@@ -2,6 +2,12 @@ parameters:
   - name: appFrameworkType
     type: string
     default: "nodejs"
+  - name: Type
+    type: string
+    default: "kubernetes" # kubernetes, npm, functions, Nuget etc.
+  - name: npmLegacyPeerDeps
+    type: boolean
+    default: false
 
 resources:
   repositories:
@@ -14,15 +20,12 @@ variables:
   appName: $[replace(variables['Build.Repository.Name'], 'DEFRA/', '')]
 
 stages:
-  - stage: init
+  - stage: Init
     displayName: "Init Stage"
     jobs:
-      - job: appVersion
+      - job: AppVersionExtraction
         displayName: "Get App Version"
         steps:
-          - script: |
-              echo APP_NAME=$(APP_NAME)
-            displayName: "Set App Version"
           - template: /ado-pipeline/init/app-version.yaml
             parameters:
               appFrameworkType: ${{ parameters.appFrameworkType }}
@@ -35,7 +38,10 @@ stages:
               echo -e "\033[0;33mBranch: $(Build.SourceBranchName)\033[0m"
             displayName: "Print repo and branch"
 
+
   - stage: Build
+    dependsOn:
+      - Init
     displayName: "Build Stage"
     variables:
       - template: variables.yml
@@ -46,8 +52,12 @@ stages:
           - checkout: self
           - checkout: FcpPipelineCommon
           - template: /ado-pipeline/build/build-${{ parameters.appFrameworkType }}.yaml
+            parameters:
+              npmLegacyPeerDeps: ${{ parameters.npmLegacyPeerDeps }}
 
   - stage: stage
+    dependsOn:
+      - Init
     displayName: "Stage"
     variables:
       - template: variables.yml
@@ -69,3 +79,19 @@ stages:
             parameters:
               appFrameworkType: ${{ parameters.appFrameworkType }}
 
+  - stage: Deployment
+    dependsOn:
+      - Init
+      - Build
+      - stage
+    displayName: "Deployment Stage"
+    variables:
+      - template: variables.yml
+    jobs:
+      - job: Deploy
+        displayName: "Deploy"
+        condition: succeeded()
+        steps:
+          - checkout: self
+          - checkout: FcpPipelineCommon
+          - template: /ado-pipeline/deploy/deploy-${{ parameters.type }}.yaml
