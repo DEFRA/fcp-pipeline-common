@@ -32,6 +32,8 @@ stages:
               ls -la
               env | grep -i "BUILD_REPOSITORY_NAME"
               echo -e "\033[0;33mBranch: $(Build.SourceBranchName)\033[0m"
+              echo ""
+              env
             displayName: "Build and Workspace Info"
 
           - template: /ado-pipeline/init/app-version.yaml
