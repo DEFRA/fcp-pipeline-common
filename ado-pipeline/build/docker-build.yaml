@@ -1,0 +1,20 @@
+parameters:
+  - name: dockerFilePath
+    type: string
+    default: "Dockerfile"
+steps:
+  - task: Docker@2
+    displayName: Login to ACR
+    inputs:
+      command: login
+      containerRegistry: AZD-FCP-ACR-SND2
+
+  - task: Docker@2
+    inputs:
+      command: "buildAndPush" # 'buildAndPush' | 'build' | 'push' | 'login' | 'logout' | 'start' | 'stop'. Required. Command. Default: buildAndPush.
+      Dockerfile: ${{ parameters.dockerFilePath }}
+      buildContext: "$(appName)"
+      containerRegistry: AZD-FCP-ACR-SND2
+      repository: "$(appName)"
+      tags: |
+        $(releaseVersion)

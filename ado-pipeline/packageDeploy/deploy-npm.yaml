@@ -4,7 +4,7 @@
 
 steps:
   - task: NodeTool@0
-    displayName: "Install Node.js"
+    displayName: Install Node.js
     inputs:
       checkLatest: true
 
@@ -23,11 +23,9 @@ steps:
       npm ci --ignore-scripts --omit=dev
 
       if [[ "$(isMainBranch)" == "true" ]]; then
-        echo version is $(releaseVersion)
         npm publish
       else
-        version="$(releaseVersion)-alpha.$(buildVer)"
-        echo version is $version
+        version="$(releaseVersion)"
         npm version $version
         npm publish --tag next
       fi

@@ -1,4 +1,4 @@
 steps:
-- script: |
-    echo "Building Java application..."
-  displayName: "Build Java"
+  - script: |
+      echo "Building Java application..."
+    displayName: Build Java
