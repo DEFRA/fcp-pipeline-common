@@ -3,41 +3,45 @@ parameters:
     type: string
 
 steps:
-- bash: |
-    echo "Extracting The App Version...."
-  displayName: "App Version"
+  - bash: |
+      echo "Extracting The App Version...."
+    displayName: App Version
 
-- bash: |
-    npmVersionString=$(grep version ./package.json | awk -F \" '{print $4}')
-    echo "##vso[task.setvariable variable=appVersion]$npmVersionString"
-  condition: ${{ eq(parameters.appFrameworkType, 'nodejs') }}
-  displayName: 'set build number'
+  - bash: |
+      npmVersionString=$(grep version $(appName)/package.json | awk -F \" '{print $4}')
+      echo "##vso[task.setvariable variable=appVersion]$npmVersionString"
+    condition: ${{ eq(parameters.appFrameworkType, 'nodejs') }}
+    displayName: set build number
 
-- bash: |
-    echo Todo: set build number 
-    echo "##vso[task.setvariable variable=appVersion]0.0.0"
-  condition: ${{ eq(parameters.appFrameworkType, 'dotnet') }}
+  - bash: |
+      echo Todo: set build number 
+      echo "##vso[task.setvariable variable=appVersion]0.0.0"
+    condition: ${{ eq(parameters.appFrameworkType, 'dotnet') }}
+    displayName: set build number
 
-  displayName: 'set build number'
+  - bash: |
+      echo Todo: set build number 
+      echo "##vso[task.setvariable variable=appVersion]0.0.0"
+    condition: ${{ eq(parameters.appFrameworkType, 'java') }}
+    displayName: set build number
 
-- bash: |
-    echo Todo: set build number 
-    echo "##vso[task.setvariable variable=appVersion]0.0.0"
-  condition: ${{ eq(parameters.appFrameworkType, 'java') }}
+  - bash: |
+      buildVer=$(echo $(Build.BuildNumber) | cut -d'.' -f2)
+      echo buildNumber $(Build.BuildNumber)
+      echo buildVer $buildVer
+      echo appVersion $(appVersion)
 
-  displayName: 'set build number'
+      if [ "$(isMainBranch)" ]; then
+        version="$(appVersion)-alpha.$buildVer"
+      else
+        version="$(appVersion)"
+      fi
 
-- bash: |
-    buildVer=$(echo $(Build.BuildNumber) | cut -d'.' -f2)
-    echo buildNumber $(Build.BuildNumber)
-    echo buildVer $buildVer
-    echo appVersion $(appVersion)
+      echo "##vso[task.setvariable variable=ReleaseVersion;isOutput=true]$version"
+      echo "##vso[task.setvariable variable=BuildVer;isOutput=true]$buildVer"
 
-    echo "##vso[task.setvariable variable=ReleaseVersion;isOutput=true]$(appVersion)"
-    echo "##vso[task.setvariable variable=BuildVer;isOutput=true]$buildVer"
+      # setting the pipeline name with updating the build number
+      echo "##vso[build.updatebuildnumber]$(Build.SourceBranchName)  $version ($buildVer)"
 
-    # setting the pipeline name with updating the build number
-    echo "##vso[build.updatebuildnumber]$(Build.SourceBranchName)  $(appVersion) ($buildVer)"
-
-  displayName: "Set global App Version"
-  name: AppVersionTask
+    displayName: Set global App Version
+    name: AppVersionTask

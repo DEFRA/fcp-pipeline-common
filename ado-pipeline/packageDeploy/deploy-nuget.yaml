@@ -1,0 +1,4 @@
+steps:
+  - script: |
+      echo "deploy to nuget"
+    displayName: Deploy to nuget

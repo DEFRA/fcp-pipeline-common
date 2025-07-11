@@ -1,0 +1,7 @@
+variables:
+  - group: fcp-pipeline-common-variables
+  - group: fcp-pipeline-common-secrets
+  - name: releaseVersion
+    value: $[ stageDependencies.Build.AppVersionExtraction.outputs['AppVersionTask.ReleaseVersion'] ]
+  - name: buildVer
+    value: $[ stageDependencies.Build.AppVersionExtraction.outputs['AppVersionTask.BuildVer'] ]
