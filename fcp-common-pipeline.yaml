@@ -84,7 +84,7 @@ stages:
 
   - ${{ if eq(variables['isPackage'], true) }}:
       - stage: PackageDeployment
-        condition: and( succeeded() , ne(variables['isPackage'], true) )
+        condition: succeeded()
         dependsOn:
           - Build
         displayName: Package Deployment
