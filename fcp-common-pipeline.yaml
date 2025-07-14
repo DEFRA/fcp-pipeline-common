@@ -20,16 +20,18 @@ resources:
       type: github
 
 variables:
-  appName: $[replace(variables['Build.Repository.Name'], 'DEFRA/', '')]
-  isPackage: ${{ or(eq(parameters.type, 'npm'), eq(parameters.type, 'nuget')) }}
-  isMainBranch: ${{eq(variables['Build.SourceBranch'], 'refs/heads/main')}}
+  - group: fcp-pipeline-common-variables
+  - group: fcp-pipeline-common-secrets
+  - name: appName
+    value: $[replace(variables['Build.Repository.Name'], 'DEFRA/', '')]
+  - name: isPackage
+    value: ${{ or(eq(parameters.type, 'npm'), eq(parameters.type, 'nuget')) }}
+  - name: isMainBranch
+    value: ${{eq(variables['Build.SourceBranch'], 'refs/heads/main')}}
 
 stages:
   - stage: Build
     displayName: 'Build'
-    variables:
-      - template: variables.yaml
-
     jobs:
       - job: buildJob
         displayName: 'Build Application'
@@ -58,6 +60,8 @@ stages:
               - template: /ado-pipeline/build/docker-build.yaml
                 parameters:
                   dockerFilePath: ${{ parameters.dockerFilePath }}
+                  subscription: $(sharedSubscription)
+                  acrName: $(sharedAcr)
 
   - stage: Check
     displayName: 'Check'
