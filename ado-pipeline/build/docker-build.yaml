@@ -2,19 +2,23 @@ parameters:
   - name: dockerFilePath
     type: string
     default: "Dockerfile"
+  - name: subscription
+    type: string
+  - name: acrName
+    type: string    
 steps:
-  - task: Docker@2
-    displayName: Login to ACR
-    inputs:
-      command: login
-      containerRegistry: AZD-FCP-ACR-SND2
+  - bash: |
+      echo "Building Docker image using Dockerfile at path: ${{ parameters.dockerFilePath }}"
+      echo "Using ACR: ${{ parameters.acrName }} and Subscription: ${{ parameters.subscription }}"
+    displayName: 'Echo Build Parameters'
 
-  - task: Docker@2
+  - task: AzureCLI@2
+    displayName: Docker build and push
     inputs:
-      command: "buildAndPush" # 'buildAndPush' | 'build' | 'push' | 'login' | 'logout' | 'start' | 'stop'. Required. Command. Default: buildAndPush.
-      Dockerfile: ${{ parameters.dockerFilePath }}
-      buildContext: "$(appName)"
-      containerRegistry: AZD-FCP-ACR-SND2
-      repository: "$(appName)"
-      tags: |
-        $(releaseVersion)
+      azureSubscription: ${{ parameters.subscription }}
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        az acr login --name ${{ parameters.acrName }}
+        cd "$(appName)"
+        az acr build -r ${{ parameters.acrName }} -t $(appName):$(AppVersionTask.ReleaseVersion)  -f ${{ parameters.dockerFilePath }} .
