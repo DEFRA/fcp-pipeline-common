@@ -41,12 +41,9 @@ stages:
           - checkout: FcpPipelineCommon
 
           - script: |
-              echo APP_NAME=$(appName)
-              ls -la
-              env | grep -i "BUILD_REPOSITORY_NAME"
+              echo "Primary repository: $BUILD_REPOSITORY_NAME"
               echo -e "\033[0;33mBranch: $(Build.SourceBranchName)\033[0m"
-              echo ""
-              env
+              echo "Commit message: $BUILD_SOURCEVERSIONMESSAGE"
             displayName: "Build and Workspace Info"
 
           - template: /ado-pipeline/build/helpers/app-version.yaml
@@ -56,6 +53,7 @@ stages:
           - template: /ado-pipeline/build/build-${{ parameters.appFrameworkType }}.yaml
             parameters:
               npmLegacyPeerDeps: ${{ parameters.npmLegacyPeerDeps }}
+
           - ${{ if ne(variables['isPackage'], true) }}:
               - template: /ado-pipeline/build/docker-build.yaml
                 parameters:
