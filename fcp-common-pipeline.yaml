@@ -93,7 +93,7 @@ stages:
             steps:
               - checkout: self
               - checkout: FcpPipelineCommon
-              - template: /ado-pipeline/build/docker-build.yaml
+              - template: /ado-pipeline/promote/docker-build.yaml
                 parameters:
                   dockerFilePath: ${{ parameters.dockerFilePath }}
                   subscription: $(sharedSubscription)
