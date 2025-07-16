@@ -54,7 +54,7 @@ steps:
 
         REPO_NAME=$(echo "$BUILD_REPOSITORY_NAME" | cut -d'/' -f2)
         CHART_VERSION=$(releaseVersion)
-        CHART_NAME="$REPO_NAME"
+        CHART_NAME="helm-chart-$REPO_NAME"
         CHART_PATH="$(Agent.BuildDirectory)/s/$REPO_NAME/helm/$REPO_NAME"
         CHART_PACKAGE="$CHART_PATH/$CHART_NAME-$CHART_VERSION.tgz"
         ACR_NAME=${{ parameters.acrName }}
