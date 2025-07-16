@@ -1,0 +1,49 @@
+parameters:
+  - name: appFrameworkType
+    type: string
+
+steps:
+  - bash: |
+      echo "Setting app version for framework: ${{ parameters.appFrameworkType }}"
+
+      case "${{ parameters.appFrameworkType }}" in
+        nodejs)
+          echo "Setting version for Node.js..."
+          npmVersionString=$(grep version $(appName)/package.json | awk -F \" '{print $4}')
+          echo "##vso[task.setvariable variable=appVersion]$npmVersionString"
+          ;;
+        dotnet)
+          echo "Setting version for .NET..."
+          echo "##vso[task.setvariable variable=appVersion]0.0.0"
+          ;;
+        java)
+          echo "Setting version for Java..."
+          echo "##vso[task.setvariable variable=appVersion]0.0.0"
+          ;;
+        *)
+          echo "Unknown app framework type: ${{ parameters.appFrameworkType }}"
+          exit 1
+          ;;
+      esac
+    displayName: Set app version (framework-specific)
+
+  - bash: |
+      buildVer=$(echo $(Build.BuildNumber) | cut -d'.' -f2)
+      echo buildNumber $(Build.BuildNumber)
+      echo buildVer $buildVer
+      echo appVersion $(appVersion)
+
+      if [ "$(isMainBranch)" ]; then
+        version="$(appVersion)-alpha.$buildVer"
+      else
+        version="$(appVersion)"
+      fi
+
+      echo "##vso[task.setvariable variable=ReleaseVersion;isOutput=true]$version"
+      echo "##vso[task.setvariable variable=BuildVer;isOutput=true]$buildVer"
+
+      # setting the pipeline name with updating the build number
+      echo "##vso[build.updatebuildnumber]$(Build.SourceBranchName)  $version ($buildVer)"
+
+    displayName: Set global App Version
+    name: AppVersionTask

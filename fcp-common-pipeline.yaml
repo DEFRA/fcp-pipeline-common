@@ -10,7 +10,7 @@ parameters:
     default: false
   - name: dockerFilePath
     type: string
-    default: 'Dockerfile'
+    default: "Dockerfile"
 
 resources:
   repositories:
@@ -31,10 +31,10 @@ variables:
 
 stages:
   - stage: Build
-    displayName: 'Build'
+    displayName: "Build"
     jobs:
       - job: buildJob
-        displayName: 'Build Application'
+        displayName: "Build Application"
 
         steps:
           - checkout: self
@@ -47,9 +47,9 @@ stages:
               echo -e "\033[0;33mBranch: $(Build.SourceBranchName)\033[0m"
               echo ""
               env
-            displayName: 'Build and Workspace Info'
+            displayName: "Build and Workspace Info"
 
-          - template: /ado-pipeline/init/app-version.yaml
+          - template: /ado-pipeline/build/helpers/app-version.yaml
             parameters:
               appFrameworkType: ${{ parameters.appFrameworkType }}
 
@@ -64,7 +64,7 @@ stages:
                   acrName: $(sharedAcr)
 
   - stage: Check
-    displayName: 'Check'
+    displayName: "Check"
     dependsOn: Build
     variables:
       - template: variables.yaml
