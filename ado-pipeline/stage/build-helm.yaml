@@ -37,8 +37,3 @@ steps:
         exit 1
       fi
     displayName: "Check Helm Chart Directory"
-
-  # Print the env variables
-  - script: |
-      env
-    displayName: "Print env variables"
