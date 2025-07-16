@@ -54,15 +54,8 @@ stages:
             parameters:
               npmLegacyPeerDeps: ${{ parameters.npmLegacyPeerDeps }}
 
-          - ${{ if ne(variables['isPackage'], true) }}:
-              - template: /ado-pipeline/build/docker-build.yaml
-                parameters:
-                  dockerFilePath: ${{ parameters.dockerFilePath }}
-                  subscription: $(sharedSubscription)
-                  acrName: $(sharedAcr)
-
-  - stage: Check
-    displayName: "Check"
+  - stage: Promote
+    displayName: "Promote"
     dependsOn: Build
     variables:
       - template: variables.yaml
@@ -72,7 +65,7 @@ stages:
         steps:
           - checkout: self
           - checkout: FcpPipelineCommon
-          - template: /ado-pipeline/stage/snyk-scan-application.yaml
+          - template: /ado-pipeline/promote/snyk-scan-application.yaml
             parameters:
               appFrameworkType: ${{ parameters.appFrameworkType }}
 
@@ -81,7 +74,7 @@ stages:
         steps:
           - checkout: self
           - checkout: FcpPipelineCommon
-          - template: /ado-pipeline/stage/sonar-cloud.yaml
+          - template: /ado-pipeline/promote/sonar-cloud.yaml
             parameters:
               appFrameworkType: ${{ parameters.appFrameworkType }}
 
@@ -90,9 +83,16 @@ stages:
         steps:
           - checkout: self
           - checkout: FcpPipelineCommon
-          - template: /ado-pipeline/stage/build-helm.yaml
+          - template: /ado-pipeline/promote/build-helm.yaml
             parameters:
               appFrameworkType: ${{ parameters.appFrameworkType }}
+
+      - ${{ if ne(variables['isPackage'], true) }}:
+          - template: /ado-pipeline/build/docker-build.yaml
+            parameters:
+              dockerFilePath: ${{ parameters.dockerFilePath }}
+              subscription: $(sharedSubscription)
+              acrName: $(sharedAcr)
 
   - ${{ if eq(variables['isPackage'], true) }}:
       - stage: PackageDeployment
