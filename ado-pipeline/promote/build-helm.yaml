@@ -1,3 +1,9 @@
+parameters:
+  - name: subscription
+    type: string
+  - name: acrName
+    type: string
+
 steps:
   - script: |
       echo "Checking Helm Chart..."
@@ -39,32 +45,35 @@ steps:
     displayName: "Check Helm Chart Directory"
 
   # Package and push the Helm chart to ACR
-  - script: |
-
-      REPO_NAME=$(echo "$BUILD_REPOSITORY_NAME" | cut -d'/' -f2)
-      echo "Repo Name: $REPO_NAME"
-
-      HELM_CHART_PATH="$(Agent.BuildDirectory)/s/$REPO_NAME/helm/$REPO_NAME"
-      echo "Helm Chart Path: $HELM_CHART_PATH"
-
-      cd "$HELM_CHART_PATH"
-
-      echo "Logging into ACR..."
-      az acr login --name $(sharedAcr)
-
-      echo "Packaging Helm chart with version: $(releaseVersion)"
-      helm package . --version $(releaseVersion) --app-version $(releaseVersion)
-
-
-      CHART_PACKAGE="${REPO_NAME}-$(releaseVersion).tgz"
-      echo "Chart Package: $CHART_PACKAGE"
-
-      echo "Logging into ACR registry: $(sharedAcr).azurecr.io"
-      az acr login --name $(sharedAcr)
-      helm registry login $(sharedAcr).azurecr.io
-
-      echo "Pushing Helm chart to ACR..."
-      helm push "$CHART_PACKAGE" oci://$(sharedAcr).azurecr.io/helm
-
-      echo "Helm chart $CHART_PACKAGE pushed to oci://$(sharedAcr).azurecr.io/helm"
+  - task: AzureCLI@2
     displayName: "Package & Push Helm Chart to ACR"
+    inputs:
+      azureSubscription: ${{ parameters.subscription }}
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+
+        REPO_NAME=$(echo "$BUILD_REPOSITORY_NAME" | cut -d'/' -f2)
+        CHART_VERSION=$(releaseVersion)
+        CHART_NAME="$REPO_NAME"
+        CHART_PATH="$(Agent.BuildDirectory)/s/$REPO_NAME/helm/$REPO_NAME"
+        CHART_PACKAGE="$CHART_PATH/$CHART_NAME-$CHART_VERSION.tgz"
+        ACR_NAME=${{ parameters.acrName }}
+
+        echo "Logging into ACR via az acr login..."
+        az acr login --name $ACR_NAME
+
+        echo "Packaging Helm chart..."
+        cd "$CHART_PATH"
+        helm package . --version "$CHART_VERSION" --app-version "$CHART_VERSION"
+
+        echo "Enabling OCI support for Helm..."
+        export HELM_EXPERIMENTAL_OCI=1
+
+        echo "Logging into Helm OCI registry..."
+        helm registry login "$ACR_NAME.azurecr.io"
+
+        echo "Pushing Helm chart to ACR via OCI..."
+        helm push "$CHART_NAME-$CHART_VERSION.tgz" oci://"$ACR_NAME.azurecr.io/helm"
+
+        echo "Helm chart pushed: $CHART_NAME-$CHART_VERSION.tgz → oci://$ACR_NAME.azurecr.io/helm"

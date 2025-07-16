@@ -86,6 +86,8 @@ stages:
           - template: /ado-pipeline/promote/build-helm.yaml
             parameters:
               appFrameworkType: ${{ parameters.appFrameworkType }}
+              subscription: $(sharedSubscription)
+              acrName: $(sharedAcr)
 
       - ${{ if ne(variables['isPackage'], true) }}:
           - job: DockerBuild
