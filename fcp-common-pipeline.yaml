@@ -88,11 +88,16 @@ stages:
               appFrameworkType: ${{ parameters.appFrameworkType }}
 
       - ${{ if ne(variables['isPackage'], true) }}:
-          - template: /ado-pipeline/build/docker-build.yaml
-            parameters:
-              dockerFilePath: ${{ parameters.dockerFilePath }}
-              subscription: $(sharedSubscription)
-              acrName: $(sharedAcr)
+          - job: DockerBuild
+            displayName: "Docker Build"
+            steps:
+              - checkout: self
+              - checkout: FcpPipelineCommon
+              - template: /ado-pipeline/build/docker-build.yaml
+                parameters:
+                  dockerFilePath: ${{ parameters.dockerFilePath }}
+                  subscription: $(sharedSubscription)
+                  acrName: $(sharedAcr)
 
   - ${{ if eq(variables['isPackage'], true) }}:
       - stage: PackageDeployment
