@@ -37,3 +37,34 @@ steps:
         exit 1
       fi
     displayName: "Check Helm Chart Directory"
+
+  # Package and push the Helm chart to ACR
+  - script: |
+
+      REPO_NAME=$(echo "$BUILD_REPOSITORY_NAME" | cut -d'/' -f2)
+      echo "Repo Name: $REPO_NAME"
+
+      HELM_CHART_PATH="$(Agent.BuildDirectory)/s/$REPO_NAME/helm/$REPO_NAME"
+      echo "Helm Chart Path: $HELM_CHART_PATH"
+
+      cd "$HELM_CHART_PATH"
+
+      echo "Logging into ACR..."
+      az acr login --name $(sharedAcr)
+
+      echo "Packaging Helm chart with version: $(releaseVersion)"
+      helm package . --version $(releaseVersion) --app-version $(releaseVersion)
+
+
+      CHART_PACKAGE="${REPO_NAME}-$(releaseVersion).tgz"
+      echo "Chart Package: $CHART_PACKAGE"
+
+      echo "Logging into ACR registry: $(sharedAcr).azurecr.io"
+      az acr login --name $(sharedAcr)
+      helm registry login $(sharedAcr).azurecr.io
+
+      echo "Pushing Helm chart to ACR..."
+      helm push "$CHART_PACKAGE" oci://$(sharedAcr).azurecr.io/helm
+
+      echo "Helm chart $CHART_PACKAGE pushed to oci://$(sharedAcr).azurecr.io/helm"
+    displayName: "Package & Push Helm Chart to ACR"
