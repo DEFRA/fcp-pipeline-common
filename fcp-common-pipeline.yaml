@@ -33,7 +33,7 @@ stages:
   - stage: Build
     displayName: "Build"
     jobs:
-      - job: buildJob
+      - job: AppVersionExtraction
         displayName: "Build Application"
 
         steps:
