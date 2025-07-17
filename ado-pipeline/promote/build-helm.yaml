@@ -11,7 +11,7 @@ steps:
         exit 1
       fi
       helm version --short
-    displayName: "Check Helm Installation"
+    displayName: "Helm Version"
 
   # Check if the Helm chart directory exists
   - script: |
@@ -35,11 +35,11 @@ steps:
         ls -la
         exit 1
       fi
-    displayName: "Check Helm Chart Directory"
+    displayName: "Helm Template and Lint"
 
   # Package and push the Helm chart to ACR
   - task: AzureCLI@2
-    displayName: "Package & Push Helm Chart to ACR"
+    displayName: "Helm Push to ACR"
     inputs:
       azureSubscription: ${{ parameters.subscription }}
       scriptType: bash
@@ -60,7 +60,7 @@ steps:
         ACR_TOKEN=$(az acr login --name $ACR_NAME --expose-token --output tsv --query accessToken)
 
         echo "Logging Helm into ACR registry..."
-        helm registry login "$ACR_NAME.azurecr.io" --username 00000000-0000-0000-0000-000000000000 --password $ACR_TOKEN
+        helm registry login "$ACR_NAME.azurecr.io" --username 00000000-0000-0000-0000-000000000000 --password-stdin $ACR_TOKEN
 
         echo "Packaging Helm chart..."
         cd "$CHART_PATH"
