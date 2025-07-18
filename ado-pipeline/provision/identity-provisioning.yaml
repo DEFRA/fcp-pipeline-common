@@ -1,0 +1,61 @@
+parameters:
+  - name: subscription
+    type: string
+steps:
+  - task: AzureCLI@2
+    displayName: 'Identity Provisioning'
+    inputs:
+      azureSubscription: ${{ parameters.subscription }}
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        echo 'Generating the managed identity full name'
+        identity=$(yq eval '.resources.identity' $(appName)/provision.azure.yaml)
+        identityFullName="$(managedIdentityPrefix)-$identity"
+
+        echo "##vso[task.setvariable variable=identityFullName]$identityFullName"
+
+        echo The managed identity full name: $identityFullName
+        echo creating the managed identity $identityFullName in Azure
+
+        # Check if the managed identity exists
+        if [[ $(az identity list -g $(resourceGroup) --query "[?name=='$identityFullName'] | length(@)") > 0 ]]
+        then
+          echo The identity $identityFullName is exist
+        else
+          az identity create \
+          -g $(resourceGroup) \
+          -n $identityFullName \
+          --tags 'ServiceCode=FFC' \
+          'serviceName=FutureFarming' \
+          'ServiceType=LOB' \
+          'Environment=SND' \
+          'Tier=ManagedIdentity' \
+          'Location=northeurope' \
+          'CreatedBy=ADO-Pipeline'
+        fi
+
+  - task: AzureCLI@2
+    displayName: Creating the federation
+    condition: succeeded()
+    inputs:
+      azureSubscription: ${{ parameters.subscription }}
+      scriptType: "bash"
+      scriptLocation: "inlineScript"
+      inlineScript: |
+        source ./fcp-pipeline-common/common/shared_functions.sh
+
+        federationName=$(get_federation_name "$(appName)" "$(altEnvironment)" "$(releaseVersion)")
+        echo "The federation name is $federationName"
+
+        namespace=$(get_namespace_name "$(isMainBranch)" "$(appName)" "$(releaseVersion)" "$(altEnvironment)")
+        echo the namespace is $namespace        
+
+        az identity federated-credential create --name $federationName \
+        --identity-name $(identityFullName) \
+        --resource-group $(resourceGroup) \
+        --issuer $(aksOidcIssuerIssuerUrl) \
+        --subject system:serviceaccount:$namespace:$(appName) \
+        --audience api://AzureADTokenExchange
+
+        # todo access to the vault

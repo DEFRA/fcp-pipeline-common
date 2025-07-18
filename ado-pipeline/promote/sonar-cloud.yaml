@@ -11,7 +11,7 @@ parameters:
 steps:
   - script: |
       echo "Creating the project $(appName) version $(releaseVersion) in the Sonar Cloud if it is not there"
-      SYSTEM_DEBUG=true ./fcp-pipeline-common/ado-pipeline/stage/scripts/set-sonarCloud.sh \
+      SYSTEM_DEBUG=true ./fcp-pipeline-common/ado-pipeline/promote/scripts/set-sonarCloud.sh \
       -r $(appName) \
       -k $(SONAR-API-KEY)
 
