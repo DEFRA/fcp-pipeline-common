@@ -5,12 +5,12 @@ parameters:
   - name: subscription
     type: string
   - name: acrName
-    type: string    
+    type: string
 steps:
   - bash: |
       echo "Building Docker image using Dockerfile at path: ${{ parameters.dockerFilePath }}"
       echo "Using ACR: ${{ parameters.acrName }} and Subscription: ${{ parameters.subscription }}"
-    displayName: 'Echo Build Parameters'
+    displayName: "Echo Build Parameters"
 
   - task: AzureCLI@2
     displayName: Docker build and push
@@ -21,4 +21,4 @@ steps:
       inlineScript: |
         az acr login --name ${{ parameters.acrName }}
         cd "$(appName)"
-        az acr build -r ${{ parameters.acrName }} -t $(appName):$(AppVersionTask.ReleaseVersion)  -f ${{ parameters.dockerFilePath }} .
+        az acr build -r ${{ parameters.acrName }} -t $(appName):$(releaseVersion)  -f ${{ parameters.dockerFilePath }} .

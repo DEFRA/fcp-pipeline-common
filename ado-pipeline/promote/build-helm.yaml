@@ -1,0 +1,72 @@
+parameters:
+  - name: subscription
+    type: string
+  - name: acrName
+    type: string
+steps:
+  # Check if Helm is installed and print version
+  - script: |
+      if ! command -v helm &> /dev/null; then
+        echo "Helm is not installed. Please install Helm to proceed."
+        exit 1
+      fi
+      helm version --short
+    displayName: "Helm Version"
+
+  # Check if the Helm chart directory exists
+  - script: |
+      REPO_NAME=$(echo "$BUILD_REPOSITORY_NAME" | cut -d'/' -f2)
+      echo "Repository Name: $REPO_NAME"
+
+      HELM_CHART_PATH="$(Agent.BuildDirectory)/s/$REPO_NAME/helm/$REPO_NAME"
+      echo "Helm Chart Path: $HELM_CHART_PATH"
+
+      cd "$HELM_CHART_PATH"
+
+      if [ -f "Chart.yaml" ]; then
+        echo "Chart.yaml file exists."
+        helm dependency update
+        helm lint .
+
+        # Template the chart to see what gets rendered
+        helm template "$REPO_NAME" .
+      else
+        echo "Chart.yaml file does not exist"
+        ls -la
+        exit 1
+      fi
+    displayName: "Helm Template and Lint"
+
+  # Package and push the Helm chart to ACR
+  - task: AzureCLI@2
+    displayName: "Helm Push to ACR"
+    inputs:
+      azureSubscription: ${{ parameters.subscription }}
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+
+        REPO_NAME=$(echo "$BUILD_REPOSITORY_NAME" | cut -d'/' -f2)
+        CHART_VERSION=$(releaseVersion)
+        CHART_NAME="$REPO_NAME"
+        CHART_PATH="$(Agent.BuildDirectory)/s/$REPO_NAME/helm/$REPO_NAME"
+        CHART_PACKAGE="$CHART_PATH/$CHART_NAME-$CHART_VERSION.tgz"
+        ACR_NAME=${{ parameters.acrName }}
+
+        echo "Logging into ACR via az acr login..."
+        az acr login --name $ACR_NAME
+
+        echo "Getting ACR token for Helm..."
+        ACR_TOKEN=$(az acr login --name $ACR_NAME --expose-token --output tsv --query accessToken)
+
+        echo "Logging Helm into ACR registry..."
+        helm registry login "$ACR_NAME.azurecr.io" --username 00000000-0000-0000-0000-000000000000 --password $ACR_TOKEN
+
+        echo "Packaging Helm chart..."
+        cd "$CHART_PATH"
+        helm package . --version "$CHART_VERSION" --app-version "$CHART_VERSION"
+
+        echo "Pushing Helm chart to ACR via OCI..."
+        helm push "$CHART_NAME-$CHART_VERSION.tgz" oci://"$ACR_NAME.azurecr.io/helm"
+
+        echo "Helm chart pushed: $CHART_NAME-$CHART_VERSION.tgz → oci://$ACR_NAME.azurecr.io/helm"

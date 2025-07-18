@@ -10,7 +10,7 @@ parameters:
     default: false
   - name: dockerFilePath
     type: string
-    default: 'Dockerfile'
+    default: "Dockerfile"
 
 resources:
   repositories:
@@ -31,40 +31,31 @@ variables:
 
 stages:
   - stage: Build
-    displayName: 'Build'
+    displayName: "Build"
     jobs:
-      - job: buildJob
-        displayName: 'Build Application'
+      - job: AppVersionExtraction
+        displayName: "Build Application"
 
         steps:
           - checkout: self
           - checkout: FcpPipelineCommon
 
           - script: |
-              echo APP_NAME=$(appName)
-              ls -la
-              env | grep -i "BUILD_REPOSITORY_NAME"
+              echo "Primary repository: $BUILD_REPOSITORY_NAME"
               echo -e "\033[0;33mBranch: $(Build.SourceBranchName)\033[0m"
-              echo ""
-              env
-            displayName: 'Build and Workspace Info'
+              echo "Commit message: $BUILD_SOURCEVERSIONMESSAGE"
+            displayName: "Build and Workspace Info"
 
-          - template: /ado-pipeline/init/app-version.yaml
+          - template: /ado-pipeline/build/helpers/app-version.yaml
             parameters:
               appFrameworkType: ${{ parameters.appFrameworkType }}
 
           - template: /ado-pipeline/build/build-${{ parameters.appFrameworkType }}.yaml
             parameters:
               npmLegacyPeerDeps: ${{ parameters.npmLegacyPeerDeps }}
-          - ${{ if ne(variables['isPackage'], true) }}:
-              - template: /ado-pipeline/build/docker-build.yaml
-                parameters:
-                  dockerFilePath: ${{ parameters.dockerFilePath }}
-                  subscription: $(sharedSubscription)
-                  acrName: $(sharedAcr)
 
-  - stage: Check
-    displayName: 'Check'
+  - stage: Promote
+    displayName: "Promote"
     dependsOn: Build
     variables:
       - template: variables.yaml
@@ -74,17 +65,40 @@ stages:
         steps:
           - checkout: self
           - checkout: FcpPipelineCommon
-          - template: /ado-pipeline/stage/snyk-scan-application.yaml
+          - template: /ado-pipeline/promote/snyk-scan-application.yaml
             parameters:
               appFrameworkType: ${{ parameters.appFrameworkType }}
+
       - job: SonarCloud
         displayName: SonarCloud Analysis
         steps:
           - checkout: self
           - checkout: FcpPipelineCommon
-          - template: /ado-pipeline/stage/sonar-cloud.yaml
+          - template: /ado-pipeline/promote/sonar-cloud.yaml
             parameters:
               appFrameworkType: ${{ parameters.appFrameworkType }}
+
+      - job: HelmTemplate
+        displayName: "Build Helm Template"
+        steps:
+          - checkout: self
+          - checkout: FcpPipelineCommon
+          - template: /ado-pipeline/promote/build-helm.yaml
+            parameters:
+              subscription: $(sharedSubscription)
+              acrName: $(sharedAcr)
+
+      - ${{ if ne(variables['isPackage'], true) }}:
+          - job: DockerBuild
+            displayName: "Docker Build"
+            steps:
+              - checkout: self
+              - checkout: FcpPipelineCommon
+              - template: /ado-pipeline/promote/docker-build.yaml
+                parameters:
+                  dockerFilePath: ${{ parameters.dockerFilePath }}
+                  subscription: $(sharedSubscription)
+                  acrName: $(sharedAcr)
 
   - ${{ if eq(variables['isPackage'], true) }}:
       - stage: PackageDeployment
@@ -94,6 +108,7 @@ stages:
         displayName: Package Deployment
         variables:
           - template: variables.yaml
+
         jobs:
           - job: Deploy
             displayName: Deploy
