@@ -117,3 +117,28 @@ stages:
               - checkout: self
               - checkout: FcpPipelineCommon
               - template: /ado-pipeline/packageDeploy/deploy-${{ parameters.type }}.yaml
+
+  - ${{ if ne(variables['isPackage'], true) }}:
+      - stage: BetaDeployment
+        condition: succeeded()
+        dependsOn:
+          - Build
+          - Promote
+        displayName: Beta Deployment
+        variables:
+          - template: variables.yaml
+          - group: fcp-pipeline-snd2-variables
+
+        jobs:
+          - job: Deploy
+            displayName: Deploy
+            condition: succeeded()
+            steps:
+              - checkout: self
+              - checkout: FcpPipelineCommon
+              - bash: |
+                  echo "Provisioning the resources for release version: $(releaseVersion)"
+                displayName: "Provision"
+              - template: /ado-pipeline/betaDeploy/deploy.yaml
+                parameters:
+                  subscription: $(sharedSubscription)

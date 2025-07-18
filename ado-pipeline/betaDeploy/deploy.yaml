@@ -1,0 +1,48 @@
+parameters:
+  - name: subscription
+    type: string
+    
+steps:
+  # - task: HelmInstaller@1
+  #   inputs:
+  #     helmVersionToInstall: 'latest'
+
+  - task: KubeloginInstaller@0
+    inputs:
+      kubeloginVersion: 'latest'
+
+  - task: Kubernetes@1
+    displayName: 'Kubernetes Login'
+    inputs:
+      connectionType: 'Azure Resource Manager'
+      azureSubscriptionEndpoint: ${{ parameters.subscription }}
+      azureResourceGroup: $(AKSResourceGroup)
+      kubernetesCluster: $(AKSClusster)
+      command: 'get'
+      arguments: 'namespaces'
+      secretType: 'dockerRegistry'
+      containerRegistryType: 'Azure Container Registry'
+
+  # - bash: |
+  #     az aks get-credentials --resource-group SNDFFCAKSRG2002 --name SNDFFCINFAKS2002 --overwrite-existing
+
+    displayName: "login"     
+
+  - task: HelmDeploy@1
+    inputs:
+      connectionType: 'Azure Resource Manager'
+      azureSubscription: ${{ parameters.subscription }}
+      azureResourceGroup: $(AKSResourceGroup)
+      kubernetesCluster: $(AKSClusster)
+      namespace: ffc-demo-pr0
+      command: 'upgrade'
+      chartType: 'Name'
+      chartName: $(sharedAcr).azurecr.io/helm/$(appName):$(releaseVersion)
+      releaseName: $(appName)
+      arguments: '--create-namespace --timeout 600s'
+      # useClusterAdmin: true
+      overrideValues: |
+        image.repository=$(sharedAcr).azurecr.io/$(appName)
+        image.tag=$(releaseVersion)
+
+
