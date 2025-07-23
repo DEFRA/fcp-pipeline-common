@@ -5,3 +5,5 @@ variables:
     value: $[ stageDependencies.Build.AppVersionExtraction.outputs['AppVersionTask.BuildVer'] ]
   - name: prNumber
     value: $[ stageDependencies.Build.AppVersionExtraction.outputs['ExtractPRNumber.prNumber'] ]
+  - name: isPr
+    value: $[ ne(stageDependencies.Build.AppVersionExtraction.outputs['ExtractPRNumber.prNumber'], '') ]
