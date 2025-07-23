@@ -68,23 +68,6 @@ stages:
     variables:
       - template: variables.yaml
     jobs:
-      - job: TempTestIsPr
-        displayName: "TEMP - Test isPr Variable"
-        steps:
-          - script: |
-              echo "Testing isPr Variable"
-              echo "isPr value: $(isPr)"
-              echo "prNumber value: $(prNumber)"
-
-              if [ "$(isPr)" = "True" ]; then
-                echo "TRUE - this is a PR build"
-              elif [ "$(isPr)" = "False" ]; then
-                echo "FALSE - this is not a PR build"
-              else
-                echo "isPr has unexpected value: '$(isPr)'"
-              fi
-            displayName: "Test isPr Variable"
-
       - job: SnyckScanApplication
         displayName: Snyk Application Scan
         steps:
