@@ -91,7 +91,7 @@ convert_config() {
     value="${value//\"/\\\"}"
 
     # Append to output string
-    output+="--set ${key}=${value} "
+    output+="${key}=${value},"
   done < "$yaml_file"
 
   # Remove trailing comma

@@ -57,5 +57,3 @@ steps:
         --issuer $(aksOidcIssuerIssuerUrl) \
         --subject system:serviceaccount:$namespace:$(appName) \
         --audience api://AzureADTokenExchange
-
-        # todo access to the vault

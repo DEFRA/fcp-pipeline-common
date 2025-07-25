@@ -34,7 +34,9 @@ steps:
             queueName=$(echo $queue | yq '.name')
             echo "Queue Name: $queueName"
 
-            if [[ "${{ parameters.isTemporary }}" == true ]]; then
+            echo "isTemporary: ${{ parameters.isTemporary }}"
+
+            if [[ "${{ parameters.isTemporary }}" == "True" ]]; then
               echo "Pr deployment, queue name is temporary"
               queueName="$(get_temp_resource_name "$(appName)", "$(prOrBranchNo)", "$queueName")"
               
