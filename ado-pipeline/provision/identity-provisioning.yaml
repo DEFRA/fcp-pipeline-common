@@ -10,50 +10,54 @@ steps:
       scriptLocation: inlineScript
       inlineScript: |
         echo 'Generating the managed identity full name'
+
+        source ./fcp-pipeline-common/common/shared_functions.sh
+
         identity=$(yq eval '.resources.identity' $(appName)/provision.azure.yaml)
         identityFullName="$(managedIdentityPrefix)-$identity"
-
-        echo "##vso[task.setvariable variable=identityFullName]$identityFullName"
 
         echo The managed identity full name: $identityFullName
         echo creating the managed identity $identityFullName in Azure
 
-        # Check if the managed identity exists
-        if [[ $(az identity list -g $(resourceGroup) --query "[?name=='$identityFullName'] | length(@)") > 0 ]]
-        then
-          echo The identity $identityFullName is exist
-        else
-          az identity create \
-          -g $(resourceGroup) \
-          -n $identityFullName \
-          --tags 'ServiceCode=FFC' \
-          'serviceName=FutureFarming' \
-          'ServiceType=LOB' \
-          'Environment=SND' \
-          'Tier=ManagedIdentity' \
-          'Location=northeurope' \
-          'CreatedBy=ADO-Pipeline'
-        fi
-
-  - task: AzureCLI@2
-    displayName: Creating the federation
-    condition: succeeded()
-    inputs:
-      azureSubscription: ${{ parameters.subscription }}
-      scriptType: "bash"
-      scriptLocation: "inlineScript"
-      inlineScript: |
-        source ./fcp-pipeline-common/common/shared_functions.sh
-
-        federationName=$(get_federation_name "$(appName)" "$(altEnvironment)" "$(releaseVersion)")
-        echo "The federation name is $federationName"
+        federation=$(get_federation_name "$(appName)" "$(altEnvironment)" "$(releaseVersion)")
+        echo "The federation name is $federation"
 
         namespace=$(get_namespace_name "$(isMainBranch)" "$(appName)" "$(releaseVersion)" "$(altEnvironment)")
-        echo the namespace is $namespace        
+        echo the namespace is $namespace  
 
-        az identity federated-credential create --name $federationName \
-        --identity-name $(identityFullName) \
-        --resource-group $(resourceGroup) \
-        --issuer $(aksOidcIssuerIssuerUrl) \
-        --subject system:serviceaccount:$namespace:$(appName) \
-        --audience api://AzureADTokenExchange
+        resourceGroup=$(resourceGroup)
+        location="northeurope"
+        identityName=$identityFullName
+        issuer=$(aksOidcIssuerIssuerUrl)
+        subject=system:serviceaccount:$namespace:$(appName)
+        audiences="api://AzureADTokenExchange"
+
+        # az deployment group what-if \
+        #   --resource-group "$resourceGroup" \
+        #   --template-file ./fcp-pipeline-common/common/resources.bicep \
+        #   --parameters identityName="$identityName" issuer="$issuer" subject="$subject" audiences="['$audiences']"
+
+        outputs=$(az deployment group create \
+          --resource-group "$resourceGroup" \
+          --template-file ./fcp-pipeline-common/common/resources.bicep \
+          --parameters identityName="$identityName" \
+                      location="$location" \
+                      issuer="$issuer" \
+                      subject="$subject" \
+                      audiences="['$audiences']" \
+                      federationName="$federation" \
+          --query "properties.outputs" \
+          --output json)
+
+        # Extract outputs using jq
+        identityClientId=$(echo "$outputs" | jq -r '.identityClientId.value')
+        identityResourceId=$(echo "$outputs" | jq -r '.identityResourceId.value')
+  
+        echo "Identity Client ID: $identityClientId"
+        echo "Identity Resource ID: $identityResourceId"
+
+        echo "##vso[task.setvariable variable=identityFullName]$identityFullName"
+        echo "##vso[task.setvariable variable=identityClientId]$identityClientId"
+        echo "##vso[task.setvariable variable=identityResourceId]$identityResourceId"
+
+

@@ -27,7 +27,7 @@ resources:
       name: defra/fcp-pipeline-common
       endpoint: DEFRA-ADP
       type: github
-      ref: refs/heads/pl-681
+      # ref: refs/heads/branch-name
 
 variables:
   - group: fcp-pipeline-common-variables
