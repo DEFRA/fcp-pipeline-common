@@ -22,7 +22,7 @@ steps:
 
       npm ci --ignore-scripts --omit=dev
 
-      if [[ "$(isMainBranch)" == "true" ]]; then
+      if [[ "$(isMainBranch)" == "True" ]]; then
         npm publish
       else
         version="$(releaseVersion)"

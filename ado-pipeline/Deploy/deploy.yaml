@@ -5,7 +5,9 @@ parameters:
     type: string
   - name: env
     type: string   
-
+  - name: isTemporary
+    type: boolean
+    default: false
 steps:
   - task: KubeloginInstaller@0
     condition: succeeded()
@@ -23,7 +25,7 @@ steps:
   - bash: |
       source ./fcp-pipeline-common/common/shared_functions.sh
       
-      configVars=$(convert_config "$(appName)/appconfig/${{ parameters.env }}.yaml" "$(appName)" "$(prOrBranchNo)" )
+      configVars=$(convert_config "$(appName)/appconfig/${{ parameters.env }}.yaml" "$(appName)" "$(prOrBranchNo)" ${{ parameters.isTemporary }})
 
       echo "configVars: $configVars"
       

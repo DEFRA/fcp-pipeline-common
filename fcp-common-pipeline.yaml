@@ -41,7 +41,7 @@ variables:
   - name: branchName
     value: $[replace(variables['Build.SourceBranchName'], 'refs/heads/', '')]
   - name: prNumber
-    value: ${{ variables['Build.PullRequestId'] }}
+    value: $[variables['System.PullRequest.PullRequestNumber']]
   - name: isPr
     value: ${{ eq(variables['Build.Reason'], 'PullRequest') }}    
 
@@ -185,5 +185,6 @@ stages:
                           env: pr
                           subscription: $(subscriptionPreFix)-SND2
                           acr: $(sharedAcr)
+                          isTemporary: true
 
 
