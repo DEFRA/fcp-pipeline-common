@@ -35,7 +35,7 @@ steps:
 
       if [[ "$(isMainBranch)" == "False" ]]; then
         echo "the isMainBranch shoud is False" so it should be an alpha version
-        if [[ "$(isPr)" == "true" ]]; then
+        if [[ "$(isPr)" == "True" ]]; then
           version="$(appVersion)-beta.$(prNumber)"
           echo "##vso[task.setvariable variable=PrOrBranchNo;isOutput=true]$prNumber"
         else
@@ -54,7 +54,12 @@ steps:
       echo "##vso[task.setvariable variable=BuildVer;isOutput=true]$buildVer"
 
       # setting the pipeline name with updating the build number
-      echo "##vso[build.updatebuildnumber]$(Build.SourceBranchName)  $version"
+      
+      if [[ "$(isPr)" == "True" ]]; then
+        echo "##vso[build.updatebuildnumber]$(System.PullRequest.SourceBranch)  $version"
+      else
+        echo "##vso[build.updatebuildnumber]$(Build.SourceBranchName)  $version"
+      fi
 
     displayName: Set global App Version
     name: AppVersionTask

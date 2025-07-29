@@ -68,31 +68,25 @@ convert_config() {
   local yaml_file="$1"
   local repoName="$2"
   local prNumberOrBranchName="$3"
+  local isTemporary="$4"
   local output=""
 
-  while IFS= read -r line; do
-    # Remove leading/trailing whitespace
-    line="$(echo "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
-    
-    # Skip empty lines, YAML doc markers, and comments
-    [[ -z "$line" || "$line" == "---" || "$line" =~ ^# ]] && continue
-
-    # Parse key and value
-    key="${line%%:*}"
-    value="${line#*: }"
-
-    # If value starts with queue:, process it
+  # Flatten YAML into key=value using yq and jq
+  while IFS='=' read -r key value; do
+    # Handle queue substitution
     if [[ "$value" == queue:* ]]; then
       raw_queue="${value#queue:}"
-      value="$(get_temp_resource_name "$repoName", "$prNumberOrBranchName", "$raw_queue")"
+      value=$(get_temp_resource_name "$repoName" "$prNumberOrBranchName" "$raw_queue")
     fi
 
-    # Escape any double quotes in value
-    value="${value//\"/\\\"}"
+    # Add PR number suffix if temporary and the key is ingress.endpoint
+    if [[ "$isTemporary" == "true" && "$key" == "ingress.endpoint" ]]; then
+      value="${value}-${prNumberOrBranchName}"
+    fi
 
-    # Append to output string
+    # Append to output
     output+="${key}=${value},"
-  done < "$yaml_file"
+  done < <(yq eval -o=json "$yaml_file" | jq -r 'paths(scalars) as $p | "\($p | join("."))=\(getpath($p))"')
 
   # Remove trailing comma
   echo "${output%,}"
