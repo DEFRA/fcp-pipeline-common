@@ -1,0 +1,16 @@
+parameters:
+  - name: subscription
+    type: string
+steps:
+  - task: AzureCLI@2
+    displayName: 'Identity Provisioning'
+    inputs:
+      azureSubscription: ${{ parameters.subscription }}
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        echo 'key vault access for the identity'
+        identity=$(yq eval '.resources.identity' $(appName)/provision.azure.yaml)
+        identityFullName="$(managedIdentityPrefix)-$identity"
+
+        

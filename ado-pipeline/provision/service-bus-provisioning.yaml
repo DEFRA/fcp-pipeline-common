@@ -1,0 +1,146 @@
+parameters:
+  - name: subscription
+    type: string
+  - name: isTemporary
+    type: boolean
+    default: false
+steps:
+  - task: AzureCLI@2
+    displayName: 'Queue Provisioning'
+    inputs:
+      azureSubscription: ${{ parameters.subscription }}
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        source ./fcp-pipeline-common/common/shared_functions.sh
+
+        hasQueue=$(yq '.resources | has("queues")' $(appName)/provision.azure.yaml)
+
+        # check if there is any queue requested
+        if [ $hasQueue == "true" ]; then
+          validatorRegex="^[a-z0-9]([a-z0-9-]*[a-z0-9]){2,62}$"
+          serviceBusNamespace=$(targetEnvironment)FFCINFSB$(subscriptionSpoke)001
+
+          identity=$(yq eval '.resources.identity' $(appName)/provision.azure.yaml)
+          identityFullName="$(managedIdentityPrefix)-$identity"
+
+          managedIdentityClientId=$(az identity show --resource-group $(resourceGroup) --name $identityFullName --query clientId --output tsv | xargs)
+            
+
+
+          # Loop over queues and create them
+          for queue in $(yq e -o=j -I=0 '.resources.queues[]' $(appName)/provision.azure.yaml); do 
+            
+            queueName=$(echo $queue | yq '.name')
+            echo "Queue Name: $queueName"
+
+            echo "isTemporary: ${{ parameters.isTemporary }}"
+
+            if [[ "${{ parameters.isTemporary }}" == "True" ]]; then
+              echo "Pr deployment, queue name is temporary"
+              queueName="$(get_temp_resource_name "$(appName)", "$(prOrBranchNo)", "$queueName")"
+              
+              echo "temp Queue Name: $queueName"
+            fi
+
+            # validate the queue name
+            if [[ ! ( $queueName =~ $validatorRegex && ${#queueName} -ge 3 && ${#queueName} -le 63 ) ]]; then
+              echo "Error: Invalid Queue Name"
+              exit 1
+            fi
+
+            queueFullName=$(echo $queueName-$(altEnvironment) | awk '{ print tolower($0) }')
+            echo The queue name $queueFullName is valid
+
+            # Check if the queue exist
+            if [[ $(az servicebus queue list -g $(resourceGroup) --namespace-name $serviceBusNamespace --query "[?name=='$queueFullName'] | length(@)") > 0 ]]
+            then
+              echo The queue $queueFullName is exist
+            else
+              maxSize=$(echo $queue | yq '.maxSize')
+              if [ "$maxSize" == "null" ]; then
+                  maxSize=5120 
+              fi
+
+              duplicateDetection=$(echo $queue | yq '.duplicateDetection')
+              if [ "$duplicateDetection" == "null" ]; then
+                  duplicateDetection=false 
+              fi
+
+              messageTimeToLive=$(echo $queue | yq '.messageTimeToLive')
+              if [ "$messageTimeToLive" == "null" ]; then
+                  messageTimeToLive=P14D 
+              fi
+
+              session=$(echo $queue | yq '.session')
+              if [ "$session" == "null" ]; then
+                  session=false 
+              fi
+
+              partitioning=$(echo $queue | yq '.partitioning')
+              if [ "$partitioning" == "null" ]; then
+                  partitioning=false 
+              fi
+
+              lockDuration=$(echo $queue | yq '.lockDuration')
+              if [ "$lockDuration" == "null" ]; then
+                  lockDuration=PT30S 
+              fi
+              
+              echo creating queue $queueFullName
+              echo resource-group  $(resourceGroup)
+              echo namespace-name $serviceBusNamespace
+              echo max-size $maxSize
+              echo duplicate-detection $duplicateDetection
+              echo default-message-time-to-live $messageTimeToLive
+              echo enable-session $session
+              echo enable-partitioning $partitioning
+              echo lock-duration $lockDuration
+
+              az servicebus queue create \
+              -n $queueFullName \
+              -g $(resourceGroup) \
+              --namespace-name $serviceBusNamespace \
+              --max-size $maxSize \
+              --duplicate-detection $duplicateDetection \
+              --default-message-time-to-live $messageTimeToLive \
+              --enable-session $session \
+              --enable-partitioning $partitioning \
+              --lock-duration $lockDuration
+
+            fi
+
+            # privilege
+            dataSenderRole="Azure Service Bus Data Sender"
+            dataReceiverRole="Azure Service Bus Data Receiver"
+
+            queueRole=$(echo $queue | yq '.role')
+            echo queueRole "$queueRole"
+            if [ "$queueRole" == "sender" ]; then
+                azureQueueRole=$dataSenderRole
+            else
+                azureQueueRole=$dataReceiverRole
+            fi
+
+            queueId=/subscriptions/$(subscriptionId)/resourceGroups/$(resourceGroup)/providers/Microsoft.ServiceBus/namespaces/$serviceBusNamespace/queues/$queueFullName
+
+            # Check if the privilege exists
+            if [[ $(az role assignment list --assignee "$managedIdentityClientId" --role "$azureQueueRole" --scope "$queueId" --query "[].name | length(@)") -gt 0 ]]
+            then
+                echo The privilege "$azureQueueRole" is exists
+            else
+                echo granting "$azureQueueRole" privilege
+                az role assignment create \
+                --role "$azureQueueRole" \
+                --assignee "$managedIdentityClientId" \
+                --scope "$queueId"
+            fi  
+
+            # TODO: we can implement the queue update if it is exist
+
+          done
+
+        else
+          echo "No queue requested"
+        fi
+

@@ -1,9 +1,9 @@
 variables:
   - name: releaseVersion
-    value: $[ stageDependencies.Build.AppVersionExtraction.outputs['AppVersionTask.ReleaseVersion'] ]
+    value: $[ stageDependencies.Build.InitAndBuild.outputs['AppVersionTask.ReleaseVersion'] ]
   - name: buildVer
-    value: $[ stageDependencies.Build.AppVersionExtraction.outputs['AppVersionTask.BuildVer'] ]
-  - name: prNumber
-    value: $[ stageDependencies.Build.AppVersionExtraction.outputs['ExtractPRNumber.prNumber'] ]
-  - name: isPr
-    value: $[ ne(stageDependencies.Build.AppVersionExtraction.outputs['ExtractPRNumber.prNumber'], '') ]
+    value: $[ stageDependencies.Build.InitAndBuild.outputs['AppVersionTask.BuildVer'] ]
+  - name: prOrBranchNo
+    value: $[ stageDependencies.Build.InitAndBuild.outputs['AppVersionTask.PrOrBranchNo'] ]    
+  - name: namespace
+    value: $[ stageDependencies.Build.InitAndBuild.outputs['ExtractNamespace.namespace'] ]    

@@ -1,0 +1,7 @@
+parameters:
+  - name: subscription
+    type: string
+steps:
+  - bash: |
+      echo 'Database Provisioning'
+    displayName: 'Database Provisioning'

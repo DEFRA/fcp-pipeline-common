@@ -46,11 +46,9 @@ steps:
       scriptLocation: inlineScript
       inlineScript: |
 
-        REPO_NAME=$(echo "$BUILD_REPOSITORY_NAME" | cut -d'/' -f2)
         CHART_VERSION=$(releaseVersion)
-        CHART_NAME="$REPO_NAME"
-        CHART_PATH="$(Agent.BuildDirectory)/s/$REPO_NAME/helm/$REPO_NAME"
-        CHART_PACKAGE="$CHART_PATH/$CHART_NAME-$CHART_VERSION.tgz"
+        CHART_NAME=$(appName)
+        CHART_PATH="$(Agent.BuildDirectory)/s/$(appName)/helm/$(appName)"
         ACR_NAME=${{ parameters.acrName }}
 
         echo "Logging into ACR via az acr login..."
