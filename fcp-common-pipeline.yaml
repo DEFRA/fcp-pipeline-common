@@ -27,7 +27,7 @@ resources:
       name: defra/fcp-pipeline-common
       endpoint: DEFRA-ADP
       type: github
-      # ref: refs/heads/branch-name
+      # ref: refs/heads/branchName
 
 variables:
   - group: fcp-pipeline-common-variables
@@ -159,10 +159,7 @@ stages:
               steps:
                 - checkout: self
                 - checkout: FcpPipelineCommon
-                - template: /ado-pipeline/provision/identity-provisioning.yaml
-                  parameters:
-                    subscription: $(subscriptionPreFix)-SND2
-                - template: /ado-pipeline/provision/service-bus-provisioning.yaml
+                - template: /ado-pipeline/provision/resources-provisioning.yaml
                   parameters:
                     subscription: $(subscriptionPreFix)-SND2
                     isTemporary: true
@@ -186,5 +183,49 @@ stages:
                           subscription: $(subscriptionPreFix)-SND2
                           acr: $(sharedAcr)
                           isTemporary: true
+                          
+  - ${{ else }}:
+    - ${{ if eq(variables['sndDeployment'], true) }}:
+        - stage: DeploymentSND
+          variables:
+            - template: variables.yaml
+            - group: fcp-pipeline-snd2-variables      
+          pool:
+            name: 'DEFRA-FFC-SND2-ubuntu2004'
+          condition: succeeded()
+          dependsOn:
+            - Build
+            - Promote
+          displayName: SND Deployment
 
-
+          jobs:
+            - job: provisioningSND
+              displayName: Provisioning SND
+              condition: succeeded()
+              steps:
+                - checkout: self
+                - checkout: FcpPipelineCommon
+                - template: /ado-pipeline/provision/resources-provisioning.yaml
+                  parameters:
+                    subscription: $(subscriptionPreFix)-SND2
+                    isTemporary: false
+                
+            - deployment: DeploySND
+              displayName: Deploy SND
+              environment: snd2
+              dependsOn: provisioning
+              condition: succeeded()
+              workspace:
+                clean: all
+              strategy:
+                runOnce:
+                  deploy:
+                    steps:
+                      - checkout: self
+                      - checkout: FcpPipelineCommon
+                      - template: /ado-pipeline/Deploy/deploy.yaml
+                        parameters:
+                          env: pr
+                          subscription: $(subscriptionPreFix)-SND2
+                          acr: $(sharedAcr)
+                          isTemporary: false

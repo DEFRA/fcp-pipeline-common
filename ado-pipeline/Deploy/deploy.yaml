@@ -25,7 +25,8 @@ steps:
   - bash: |
       source ./fcp-pipeline-common/common/shared_functions.sh
       
-      configVars=$(convert_config "$(appName)/appconfig/${{ parameters.env }}.yaml" "$(appName)" "$(prOrBranchNo)" ${{ parameters.isTemporary }})
+      echo executing command: "$(appName)/appconfig/${{ parameters.env }}.yaml" "$(appName)" "$(prOrBranchNo)" "${{ parameters.isTemporary }}"
+      configVars=$(convert_config "$(appName)/appconfig/${{ parameters.env }}.yaml" "$(appName)" "$(prOrBranchNo)" "${{ parameters.isTemporary }}")
 
       echo "configVars: $configVars"
       

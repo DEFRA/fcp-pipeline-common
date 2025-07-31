@@ -52,11 +52,11 @@ get_federation_name() {
 
 # Creating temproray resource names for resources which are in use for pr(beta) deployment 
 get_temp_resource_name() {
-  local repoName="$1"
+  local appName="$1"
   local prNumberOrBranchName="$2"
   local resource_name="$3"
 
-  small_repo_name=$(readable_hash_id "$repoName")
+  small_repo_name=$(readable_hash_id "$appName")
   small_branch_name=$(readable_hash_id "$prNumberOrBranchName")
 
   echo "t-${small_repo_name}-b${small_branch_name}-${resource_name}"
@@ -66,7 +66,7 @@ get_temp_resource_name() {
 # Convert YAML to key=value, handling 'queue:' substitution
 convert_config() {
   local yaml_file="$1"
-  local repoName="$2"
+  local appName="$2"
   local prNumberOrBranchName="$3"
   local isTemporary="$4"
   local output=""
@@ -76,11 +76,11 @@ convert_config() {
     # Handle queue substitution
     if [[ "$value" == queue:* ]]; then
       raw_queue="${value#queue:}"
-      value=$(get_temp_resource_name "$repoName" "$prNumberOrBranchName" "$raw_queue")
+      value=$(get_temp_resource_name "$appName" "$prNumberOrBranchName" "$raw_queue")
     fi
 
     # Add PR number suffix if temporary and the key is ingress.endpoint
-    if [[ "$isTemporary" == "true" && "$key" == "ingress.endpoint" ]]; then
+    if [[ "$isTemporary" == "True" && "$key" == "ingress.endpoint" ]]; then
       value="${value}-${prNumberOrBranchName}"
     fi
 
@@ -90,4 +90,50 @@ convert_config() {
 
   # Remove trailing comma
   echo "${output%,}"
+}
+
+getQueuesJson() {
+  local yaml_file="$1"
+  local appName="$2"
+  local prNumberOrBranchName="$3"
+  local altEnvironment="$4"
+  local isTemporary="$5"
+  local hasQueue="$6"
+
+  queuesJson="[]"
+
+  if [[ "$hasQueue" == "true" ]]; then
+    for queue in $(yq e -o=j -I=0 '.resources.queues[]' "$yaml_file"); do
+      queueName=$(echo "$queue" | yq '.name')
+      queueRole=$(echo "$queue" | yq '.role')
+      
+      if [[ "$isTemporary" == "True" ]]; then
+        queueName="$(get_temp_resource_name "$appName", "$prNumberOrBranchName", "$queueName")"
+      fi
+      
+      queueSuffix=$altEnvironment
+      
+      queuesJson=$(echo "$queuesJson" | jq --arg name "$queueName" \
+        --arg role "$queueRole" \
+        --arg suffix "$queueSuffix" \
+        --argjson maxSize "$(echo "$queue" | yq '.maxSize // 5120')" \
+        --argjson duplicateDetection "$(echo "$queue" | yq '.duplicateDetection // false')" \
+        --argjson session "$(echo "$queue" | yq '.session // false')" \
+        --argjson partitioning "$(echo "$queue" | yq '.partitioning // false')" \
+        --arg lockDuration "$(echo "$queue" | yq '.lockDuration // "PT30S"')" \
+        --arg messageTimeToLive "$(echo "$queue" | yq '.messageTimeToLive // "P14D"')" \
+        '. += [{
+          name: $name,
+          suffix: $suffix,
+          role: $role,
+          maxSize: $maxSize,
+          duplicateDetection: $duplicateDetection,
+          session: $session,
+          partitioning: $partitioning,
+          lockDuration: $lockDuration,
+          messageTimeToLive: $messageTimeToLive
+        }]')
+    done
+  fi
+  echo "$queuesJson"
 }
