@@ -1,8 +1,9 @@
+// General Parameters
 param targetEnvironment string
 param subscriptionSpoke string
-// Managed Identity and Federated Identity Credential
-@description('Managed Identity name')
-param identityName string
+param altEnvironment string
+
+// param identityName string
 @description('Azure location for the resources')
 param location string = resourceGroup().location
 @description('Kubernetes issuer URL for the federated identity')
@@ -11,26 +12,37 @@ param issuer string
 param subject string
 @description('Federated name')
 param federationName string
-// *****
+
+param resourcesObject object
+
+param baseTime string = utcNow('yyyyMMdd')
+
+// Variables
 @description('Audiences for the federated identity')
 var audiences = [
   'api://AzureADTokenExchange'
 ]
 
-// Service Bus
-@description('List of queues')
-param queues array
-param hasQueues bool
+var managedIdentityPrefix = '${targetEnvironment}FFCINFMID${subscriptionSpoke}001'
 
-// @description('Subscription ID')
-// param subscriptionId string = subscription().subscriptionId
-
-
+// Creating managed Identity
 resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2025-01-31-preview' = {
-  name: identityName
+  name: '${managedIdentityPrefix}-${resourcesObject.resources.identity}'
   location: location
+  tags: {
+    Name: '${managedIdentityPrefix}-${resourcesObject.resources.identity}'
+    CreatedBy: 'FCP Pipeline Common'
+    ServiceCode: 'FFC'
+    ServiceName: 'FutureFarming'
+    CreatedDate: baseTime
+    ServiceType: 'LOB'
+    Environment: targetEnvironment
+    Tier: 'ManagedIdentity'
+    Location: location
+  }
 }
 
+// Creating a federated identity credential for the managed identity
 resource federatedCred 'Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials@2025-01-31-preview' = {
   name: federationName
   parent: identity
@@ -41,60 +53,42 @@ resource federatedCred 'Microsoft.ManagedIdentity/userAssignedIdentities/federat
   }
 }
 
-// Creating a symbolic name for an existing resource
-resource serviceBusNamespace 'Microsoft.ServiceBus/namespaces@2021-11-01' existing = {
-  name: '${targetEnvironment}FFCINFSB${subscriptionSpoke}001'
-}
-
-resource queuesResources 'Microsoft.ServiceBus/namespaces/queues@2024-01-01' = [
-  for queue in queues: if (hasQueues) {
-    name: '${queue.name}-${queue.suffix}'
-    parent: serviceBusNamespace
-    properties: {
-      lockDuration: queue.lockDuration ?? 'PT30S'
-      maxSizeInMegabytes: queue.maxSize ?? 5120
-      requiresDuplicateDetection: queue.duplicateDetection ?? false
-      duplicateDetectionHistoryTimeWindow: 'PT10M'
-      defaultMessageTimeToLive: queue.messageTimeToLive ?? 'P14D'
-      requiresSession: queue.session ?? false
-      enablePartitioning: queue.partitioning ?? false
+//  Creating queues
+module queueModule 'modules/queue.bicep' = [
+  for queue in resourcesObject.resources.?queues ?? []: {
+    params: {
+      queue: queue
+      altEnvironment: altEnvironment
+      subscriptionSpoke: subscriptionSpoke
+      targetEnvironment: targetEnvironment
+      identityClientId: identity.properties.clientId
+      // identityName: identity.name
     }
   }
 ]
 
-// Role assignment IDs
-// var senderRoleId = subscriptionResourceId(
-//   'Microsoft.Authorization/roleDefinitions',
-//   '69a216fc-b8fb-44d8-bc22-1f3c2cd27a39'
-// )
-// var receiverRoleId = subscriptionResourceId(
-//   'Microsoft.Authorization/roleDefinitions',
-//   'a638d3c7-ab3a-418d-83e6-5f17a39d4fde'
-// )
+// Creating topics and subscriptions
+module topicModule 'modules/topic.bicep' = [
+  for topic in resourcesObject.resources.?topics ?? []: {
+    params: {
+      topic: topic
+      altEnvironment: altEnvironment
+      subscriptionSpoke: subscriptionSpoke
+      targetEnvironment: targetEnvironment
+      identityClientId: identity.properties.clientId
+      // identityName: identity.name
+    }
+  }
+]
 
-// resource senderRoleAssignments 'Microsoft.Authorization/roleAssignments@2022-04-01' = [
-//   for (queue, i) in queues: if (hasQueues && (queue.role == 'sender' || queue.role == 'senderAndReceiver')) {
-//     name: guid(queue.name, identity.name, 'sender')
-//     scope: queuesResources[i]
-//     properties: {
-//       principalId: identity.properties.principalId
-//       roleDefinitionId: senderRoleId
-//       principalType: 'ServicePrincipal'
-//     }
-//   }
-// ]
+output queueRoleCreates array = [
+  for i in range(0, length(resourcesObject.resources.?queues ?? [])): concat(queueModule[i].outputs.roleCreates)
+]
 
-// resource receiverRoleAssignments 'Microsoft.Authorization/roleAssignments@2022-04-01' = [
-//   for (queue, i) in queues: if (hasQueues && (queue.role == 'receiver' || queue.role == 'senderAndReceiver')) {
-//     name: guid(queue.name, identity.name, 'receiver')
-//     scope: queuesResources[i]
-//     properties: {
-//       principalId: identity.properties.clientId
-//       roleDefinitionId: receiverRoleId
-//       principalType: 'ServicePrincipal'
-//     }
-//   }
-// ]
+output topicRoleCreates array = [
+  for i in range(0, length(resourcesObject.resources.?topics ?? [])): concat(topicModule[i].outputs.roleCreates)
+]
 
 output identityResourceId string = identity.id
 output identityClientId string = identity.properties.clientId
+output identityName string = identity.name

@@ -4,7 +4,7 @@ parameters:
   - name: acr
     type: string
   - name: env
-    type: string   
+    type: string
   - name: isTemporary
     type: boolean
     default: false
@@ -24,36 +24,15 @@ steps:
 
   - bash: |
       source ./fcp-pipeline-common/common/shared_functions.sh
-      
+
       echo executing command: "$(appName)/appconfig/${{ parameters.env }}.yaml" "$(appName)" "$(prOrBranchNo)" "${{ parameters.isTemporary }}"
       configVars=$(convert_config "$(appName)/appconfig/${{ parameters.env }}.yaml" "$(appName)" "$(prOrBranchNo)" "${{ parameters.isTemporary }}")
 
       echo "configVars: $configVars"
-      
+
       echo "##vso[task.setvariable variable=configVars]$configVars"
 
     displayName: 'prepare configuration'
-
-  - task: AzureCLI@2
-    displayName: 'prepare pipeline configuration'
-    inputs:
-      azureSubscription: ${{ parameters.subscription }}
-      scriptType: bash
-      scriptLocation: inlineScript
-      inlineScript: |
-
-        identity=$(yq eval '.resources.identity' $(appName)/provision.azure.yaml)
-        identityName="$(managedIdentityPrefix)-$identity"
-
-        echo "Identity name is $identityName"
-        echo "resource group is $(resourceGroup)"
-
-        IDENTITY_CLIENT_ID=$(az identity show --resource-group $(resourceGroup) --name $identityName --query clientId --output tsv | xargs)
-        IDENTITY_RESOURCE_ID=$(az identity show --resource-group $(resourceGroup) --name $identityName --query id --output tsv | xargs)
-     
-        echo "##vso[task.setvariable variable=identityClientId]$IDENTITY_CLIENT_ID"
-        echo "##vso[task.setvariable variable=identityResourceId]$IDENTITY_RESOURCE_ID"
-        echo "##vso[task.setvariable variable=identityName]$identityName"
 
   - task: AzureCLI@2
     displayName: 'Login to acr'
@@ -78,7 +57,7 @@ steps:
       chartName: oci://${{ parameters.acr }}.azurecr.io/helm/$(appName)
       chartVersion: $(releaseVersion)
       releaseName: $(appName)
-      arguments: '--create-namespace --timeout 120s' 
+      arguments: '--create-namespace --timeout 120s'
       overrideValues: |
         image=${{ parameters.acr }}.azurecr.io/$(appName):$(releaseVersion)
         azureIdentity.clientID=$(identityClientId)
