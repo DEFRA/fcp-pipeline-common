@@ -27,7 +27,7 @@ resources:
       name: defra/fcp-pipeline-common
       endpoint: DEFRA-ADP
       type: github
-      # ref: refs/heads/branchName
+      # ref: refs/heads/branch-name
 
 variables:
   - group: fcp-pipeline-common-variables
@@ -165,6 +165,13 @@ stages:
                     isTemporary: true
                 
             - deployment: TempDeploy
+              variables:
+                  - name: identityName
+                    value: $[ dependencies.provisioning.outputs['resourceProvisioning.identityName'] ]   
+                  - name: identityClientId
+                    value: $[ dependencies.provisioning.outputs['resourceProvisioning.identityClientId'] ]
+                  - name: identityResourceId
+                    value: $[ dependencies.provisioning.outputs['resourceProvisioning.identityResourceId'] ]
               displayName: Deploy
               environment: snd2-temp
               dependsOn: provisioning

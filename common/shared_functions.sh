@@ -11,6 +11,7 @@ readable_hash_id() {
   echo "${clean}${hash}"
 }
 
+
 # extract k8s namespace name based on the branch and environment
 get_namespace_name() {
   local isMainBranch="$1"
@@ -92,48 +93,45 @@ convert_config() {
   echo "${output%,}"
 }
 
-getQueuesJson() {
+get_provisioning_object() {
   local yaml_file="$1"
   local appName="$2"
   local prNumberOrBranchName="$3"
-  local altEnvironment="$4"
-  local isTemporary="$5"
-  local hasQueue="$6"
+  local isTemporary="$4"
+  
+  # === Step 1: Read and convert YAML to JSON
+  obj=$(yq eval -o=json "$yaml_file")
 
-  queuesJson="[]"
-
-  if [[ "$hasQueue" == "true" ]]; then
-    for queue in $(yq e -o=j -I=0 '.resources.queues[]' "$yaml_file"); do
-      queueName=$(echo "$queue" | yq '.name')
-      queueRole=$(echo "$queue" | yq '.role')
-      
-      if [[ "$isTemporary" == "True" ]]; then
-        queueName="$(get_temp_resource_name "$appName", "$prNumberOrBranchName", "$queueName")"
-      fi
-      
-      queueSuffix=$altEnvironment
-      
-      queuesJson=$(echo "$queuesJson" | jq --arg name "$queueName" \
-        --arg role "$queueRole" \
-        --arg suffix "$queueSuffix" \
-        --argjson maxSize "$(echo "$queue" | yq '.maxSize // 5120')" \
-        --argjson duplicateDetection "$(echo "$queue" | yq '.duplicateDetection // false')" \
-        --argjson session "$(echo "$queue" | yq '.session // false')" \
-        --argjson partitioning "$(echo "$queue" | yq '.partitioning // false')" \
-        --arg lockDuration "$(echo "$queue" | yq '.lockDuration // "PT30S"')" \
-        --arg messageTimeToLive "$(echo "$queue" | yq '.messageTimeToLive // "P14D"')" \
-        '. += [{
-          name: $name,
-          suffix: $suffix,
-          role: $role,
-          maxSize: $maxSize,
-          duplicateDetection: $duplicateDetection,
-          session: $session,
-          partitioning: $partitioning,
-          lockDuration: $lockDuration,
-          messageTimeToLive: $messageTimeToLive
-        }]')
-    done
+  if [[ "$isTemporary" == "True" ]]; then
+    # === Step 2: Loop over queues and update names if temporary
+    hasQueue=$(yq eval '.resources | has("queues")' "$yaml_file")
+    if [[ "$hasQueue" == "true" ]]; then
+      queue_count=$(echo "$obj" | jq '.resources.queues | length')
+      for i in $(seq 0 $((queue_count - 1))); do
+        old_name=$(echo "$obj" | jq -r ".resources.queues[$i].name")
+        if [[ "$isTemporary" == "True" ]]; then
+          new_name=$(get_temp_resource_name "$appName" "$prNumberOrBranchName" "$old_name")
+          obj=$(echo "$obj" | jq --arg idx "$i" --arg new_name "$new_name" '
+            .resources.queues[$idx | tonumber].name = $new_name
+          ')
+        fi
+      done
+    fi
+    # === Step 3: Loop over topics and update names if temporary
+    hasTopic=$(yq eval '.resources | has("topics")' "$yaml_file")
+    if [[ "$hasTopic" == "true" ]]; then
+      topic_count=$(echo "$obj" | jq '.resources.topics | length')
+      for i in $(seq 0 $((topic_count - 1))); do
+        old_name=$(echo "$obj" | jq -r ".resources.topics[$i].name")
+        if [[ "$isTemporary" == "True" ]]; then
+          new_name=$(get_temp_resource_name "$appName" "$prNumberOrBranchName" "$old_name")
+          obj=$(echo "$obj" | jq --arg idx "$i" --arg new_name "$new_name" '
+            .resources.topics[$idx | tonumber].name = $new_name
+          ')
+        fi
+      done
+    fi
   fi
-  echo "$queuesJson"
+  # === Output the modified JSON
+  echo "$obj" | jq .
 }

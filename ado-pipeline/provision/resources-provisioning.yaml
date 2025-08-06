@@ -3,123 +3,105 @@ parameters:
     type: string
   - name: isTemporary
     type: boolean
-    default: false    
+    default: false
 steps:
   - task: AzureCLI@2
     displayName: 'Resource Provisioning'
+    name: resourceProvisioning
     inputs:
       azureSubscription: ${{ parameters.subscription }}
       scriptType: bash
       scriptLocation: inlineScript
       inlineScript: |
-        echo 'Generating the managed identity full name'
-        echo "isTemporary is:  ${{ parameters.isTemporary }}"
+        echo "##[debug]isTemporary is:  ${{ parameters.isTemporary }}"
 
         source ./fcp-pipeline-common/common/shared_functions.sh
 
-        yamlFile="$(appName)/provision.azure.yaml"
-
-        identity=$(yq eval '.resources.identity' "$yamlFile")
-        identityFullName="$(managedIdentityPrefix)-$identity"
-
-        echo The managed identity full name: $identityFullName
-        echo creating the managed identity $identityFullName in Azure
-
         federation=$(get_federation_name "$(appName)" "$(altEnvironment)" "$(releaseVersion)")
-        echo "The federation name is $federation"
+        echo "##[debug]The federation name is $federation"
 
         namespace=$(get_namespace_name "$(isMainBranch)" "$(appName)" "$(releaseVersion)" "$(altEnvironment)")
-        echo the namespace is $namespace  
-
-        # queue
-        hasQueue=$(yq eval '.resources | has("queues")' "$yamlFile")
-        
-        echo "executing: getQueuesJson "$yamlFile" "$(appName)" "$(prOrBranchNo)" "$(altEnvironment)" "${{ parameters.isTemporary }}" "$hasQueue""
-        queuesJson=$(getQueuesJson "$yamlFile" "$(appName)" "$(prOrBranchNo)" "$(altEnvironment)" "${{ parameters.isTemporary }}" "$hasQueue")
-
-        echo $queuesJson | jq .
-        
+        echo "##[debug]The namespace is $namespace"
+       
         # Setting the parameters for the Bicep deployment
 
         location="northeurope"
         subject=system:serviceaccount:"$namespace":$(appName)
+        echo "##[debug]The federation subject is $subject"
 
-        # az deployment group what-if \
-        #   --resource-group $(resourceGroup) \
-        #   --template-file ./fcp-pipeline-common/common/resources.bicep \
-        #  --parameters targetEnvironment="$(targetEnvironment)" \
-        #                 subscriptionSpoke="$(subscriptionSpoke)" \
-        #                 identityName="$identityFullName" \
-        #                 location="$location" \
-        #                 issuer=$(aksOidcIssuerIssuerUrl) \
-        #                 subject="$subject" \
-        #                 federationName="$federation" \
-        #                 hasQueues="$hasQueue" \
-        #                 queues="$queuesJson" 
+        PROVISIONING_YAML_FILE="$(appName)/provision.azure.yaml"
 
-        outputs=$(az deployment group create \
+        echo "##[debug]Generation the povisioning object: get_provisioning_object $PROVISIONING_YAML_FILE $(appName) $(prOrBranchNo) ${{ parameters.isTemporary }}"
+        PROVISIONING_OBJECT=$(get_provisioning_object "$PROVISIONING_YAML_FILE" "$(appName)" "$(prOrBranchNo)" "${{ parameters.isTemporary }}")
+
+        echo "##[debug]The Provisioning Object is $PROVISIONING_OBJECT"
+
+        echo "##[debug]Executing what-if operation for resources provisioning..."
+
+        az deployment group what-if \
           --resource-group $(resourceGroup) \
           --template-file ./fcp-pipeline-common/common/resources.bicep \
           --parameters targetEnvironment="$(targetEnvironment)" \
-                      subscriptionSpoke="$(subscriptionSpoke)" \
-                      identityName="$identityFullName" \
-                      location="$location" \
-                      issuer=$(aksOidcIssuerIssuerUrl) \
-                      subject="$subject" \
-                      federationName="$federation" \
-                      hasQueues="$hasQueue" \
-                      queues="$queuesJson" \
-          --query "properties.outputs" \
+                          subscriptionSpoke="$(subscriptionSpoke)" \
+                          altEnvironment="$(altEnvironment)" \
+                          location="$location" \
+                          issuer="$(aksOidcIssuerIssuerUrl)" \
+                          subject="$subject" \
+                          federationName="$federation" \
+                          resourcesObject="$PROVISIONING_OBJECT"
+
+        echo "##[debug]Executing the 'az deployment group create' ..."
+
+        DEPLOYMENT_RESULT=$(az deployment group create \
+          --resource-group $(resourceGroup) \
+          --template-file ./fcp-pipeline-common/common/resources.bicep \
+          --parameters targetEnvironment="$(targetEnvironment)" \
+                          subscriptionSpoke="$(subscriptionSpoke)" \
+                          altEnvironment="$(altEnvironment)" \
+                          location="$location" \
+                          issuer="$(aksOidcIssuerIssuerUrl)" \
+                          subject="$subject" \
+                          federationName="$federation" \
+                          resourcesObject="$PROVISIONING_OBJECT" \
           --output json)
 
+        PROVISIONING_STATE=$(echo $DEPLOYMENT_RESULT |jq -r '.properties.provisioningState')
+
+        if [[ "$PROVISIONING_STATE" == "Succeeded" ]]; then
+            echo "##[debug]ProvisioningState : $PROVISIONING_STATE"
+        else
+            echo "##[error]❌ Something went wrong with the provisioning. ProvisioningState: $PROVISIONING_STATE"
+            echo "##[debug] $DEPLOYMENT_RESULT"
+            exit 1
+        fi
+
+        outputs=$(echo "$DEPLOYMENT_RESULT" | jq -r '.properties.outputs')
+
+        # Creating role assignments
+        echo "##[debug]Creating role assignments..."
+
+        scripts=$(echo "$outputs" | jq -r '.queueRoleCreates.value + .topicRoleCreates.value | flatten | .[]')
+
+        while IFS= read -r cmd; do
+          echo "Running: $cmd"
+          eval "$cmd"
+          if [ $? -ne 0 ]; then
+            echo "##[error]❌ Command failed: $cmd"
+            exit 1
+          fi
+        done <<< "$scripts"
+
         # Extract outputs using jq
+        echo "##[debug]Extracting outputs..."
+
         identityClientId=$(echo "$outputs" | jq -r '.identityClientId.value')
         identityResourceId=$(echo "$outputs" | jq -r '.identityResourceId.value')
+        identityName=$(echo "$outputs" | jq -r '.identityName.value')
 
-        echo "Identity Client ID: $identityClientId"
-        echo "Identity Resource ID: $identityResourceId"
-
-        # Creating the role assignment by using the Bicep template is not working
-        # because the roles which are already created have random guid and in the bicep we cannot generate them
-        # so we are using the az cli command to create the role assignments
-
-        serviceBusNamespace="$(targetEnvironment)"FFCINFSB"$(subscriptionSpoke)"001
-        # Loop through each queue in the JSON array
-        echo "$queuesJson" | jq -c '.[]' | while read -r queue; do
-          name=$(echo "$queue" | jq -r '.name')
-          suffix=$(echo "$queue" | jq -r '.suffix')
-          role=$(echo "$queue" | jq -r '.role')
-          maxSize=$(echo "$queue" | jq -r '.maxSize')
-          duplicateDetection=$(echo "$queue" | jq -r '.duplicateDetection')
-          session=$(echo "$queue" | jq -r '.session')
-          partitioning=$(echo "$queue" | jq -r '.partitioning')
-          lockDuration=$(echo "$queue" | jq -r '.lockDuration')
-          messageTimeToLive=$(echo "$queue" | jq -r '.messageTimeToLive')
-
-          queuName="$name"-$(echo "$suffix" | tr '[:upper:]' '[:lower:]')
-
-          if [[ "${role,,}" == "sender" || "$role" == "senderandreceiver" ]]; then
-            az role assignment create \
-                --subscription $(subscriptionId) \
-                --role "Azure Service Bus Data Sender" \
-                --assignee $identityClientId \
-                --scope /subscriptions/$(subscriptionId)/resourceGroups/$(resourceGroup)/providers/Microsoft.ServiceBus/namespaces/"$serviceBusNamespace"/queues/"$queuName"
-
-            echo "Created role assignment for sender: $queuName"
-          fi
-          
-          if [[ "${role,,}" == "receiver" || "${role,,}" == "senderandreceiver" ]]; then
-            az role assignment create \
-                --subscription $(subscriptionId) \
-                --role "Azure Service Bus Data Receiver" \
-                --assignee $identityClientId \
-                --scope /subscriptions/$(subscriptionId)/resourceGroups/$(resourceGroup)/providers/Microsoft.ServiceBus/namespaces/"$serviceBusNamespace"/queues/"$queuName"
-
-            echo "Created role assignment for receiver: $queuName"
-          fi
-        done
-
-
-        echo "##vso[task.setvariable variable=identityFullName]$identityFullName"
-        echo "##vso[task.setvariable variable=identityClientId]$identityClientId"
-        echo "##vso[task.setvariable variable=identityResourceId]$identityResourceId"
+        echo "##[debug]Identity Name: $identityName"
+        echo "##[debug]Identity Client ID: $identityClientId"
+        echo "##[debug]Identity Resource ID: $identityResourceId"
+       
+        echo "##vso[task.setvariable variable=identityName;isOutput=true]$identityName"
+        echo "##vso[task.setvariable variable=identityClientId;isOutput=true]$identityClientId"
+        echo "##vso[task.setvariable variable=identityResourceId;isOutput=true]$identityResourceId"
