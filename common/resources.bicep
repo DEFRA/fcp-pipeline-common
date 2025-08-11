@@ -2,8 +2,9 @@
 param targetEnvironment string
 param subscriptionSpoke string
 param altEnvironment string
+param environmentDescription string
 
-// param identityName string
+// IdentityName Parameters
 @description('Azure location for the resources')
 param location string = resourceGroup().location
 @description('Kubernetes issuer URL for the federated identity')
@@ -13,6 +14,7 @@ param subject string
 @description('Federated name')
 param federationName string
 
+// Provisioning resources
 param resourcesObject object
 
 param baseTime string = utcNow('yyyyMMdd')
@@ -54,29 +56,40 @@ resource federatedCred 'Microsoft.ManagedIdentity/userAssignedIdentities/federat
 }
 
 //  Creating queues
-module queueModule 'modules/queue.bicep' = [
-  for queue in resourcesObject.resources.?queues ?? []: {
+module queueModule 'modules/serviceBus_queue.bicep' = [
+  for queue in resourcesObject.resources.?service_bus.?queues ?? []: {
     params: {
       queue: queue
       altEnvironment: altEnvironment
       subscriptionSpoke: subscriptionSpoke
       targetEnvironment: targetEnvironment
       identityClientId: identity.properties.clientId
-      // identityName: identity.name
     }
   }
 ]
 
 // Creating topics and subscriptions
-module topicModule 'modules/topic.bicep' = [
-  for topic in resourcesObject.resources.?topics ?? []: {
+module topicModule 'modules/serviceBus_topic.bicep' = [
+  for topic in resourcesObject.resources.?service_bus.?topics ?? []: {
     params: {
       topic: topic
       altEnvironment: altEnvironment
       subscriptionSpoke: subscriptionSpoke
       targetEnvironment: targetEnvironment
       identityClientId: identity.properties.clientId
-      // identityName: identity.name
+    }
+  }
+]
+
+// Creating storage accounts
+module storageModule 'modules/storage_account.bicep' = [
+  for storage in resourcesObject.resources.?storage_accounts ?? []: {
+    params: {
+      storage: storage
+      subscriptionSpoke: subscriptionSpoke
+      targetEnvironment: targetEnvironment
+      environmentDescription: environmentDescription
+      identityName: identity.name
     }
   }
 ]

@@ -28,7 +28,7 @@ resource topicResource 'Microsoft.ServiceBus/namespaces/topics@2024-01-01' = {
 }
 
 // Loop over roles
-module roleAssignmentModules 'roleAssignmentTopic.bicep' = [
+module roleAssignmentModules 'serviceBus_topic_roleAssignment.bicep' = [
   for role in topic.?roles ?? []: {
     params: {
       altEnvironment: altEnvironment
@@ -45,7 +45,7 @@ module roleAssignmentModules 'roleAssignmentTopic.bicep' = [
 
 
 // Loop over subscriptions inside this topic
-module subscriptionModules 'subscription.bicep' = [
+module subscriptionModules 'serviceBus_topic_subscription.bicep' = [
   for sub in topic.?subscriptions ?? []: {
     params: {
       topicName: topic.name
