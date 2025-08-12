@@ -29,7 +29,7 @@ resource queuesResources 'Microsoft.ServiceBus/namespaces/queues@2024-01-01' = {
 }
 
 // Loop over roles
-module roleAssignmentModules 'roleAssignmentQueue.bicep' = [
+module roleAssignmentModules 'serviceBus_queue_roleAssignment.bicep' = [
   for role in queue.?roles ?? []: {
     params: {
       altEnvironment: altEnvironment
