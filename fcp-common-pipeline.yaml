@@ -10,7 +10,7 @@ parameters:
     default: false
   - name: dockerFilePath
     type: string
-    default: "Dockerfile"
+    default: 'Dockerfile'
   - name: prDeployment
     type: boolean
     default: false
@@ -47,10 +47,10 @@ variables:
 
 stages:
   - stage: Build
-    displayName: "Build"
+    displayName: 'Build'
     jobs:
       - job: InitAndBuild
-        displayName: "Build Application"
+        displayName: 'Build Application'
 
         steps:
           - checkout: self
@@ -64,7 +64,7 @@ stages:
               echo "##[section]Is Pull Request: $(isPr)"
               echo "##[section]Pull Request Number: $(prNumber)"
 
-            displayName: "Build and Workspace Info"
+            displayName: 'Build and Workspace Info'
 
           - template: /ado-pipeline/build/helpers/app-version.yaml
             parameters:
@@ -75,7 +75,7 @@ stages:
               npmLegacyPeerDeps: ${{ parameters.npmLegacyPeerDeps }}
 
   - stage: Promote
-    displayName: "Promote"
+    displayName: 'Promote'
     dependsOn: Build
     variables:
       - template: variables.yaml
@@ -99,7 +99,7 @@ stages:
               appFrameworkType: ${{ parameters.appFrameworkType }}
 
       - job: HelmTemplate
-        displayName: "Build Helm Template"
+        displayName: 'Build Helm Template'
         steps:
           - checkout: self
           - checkout: FcpPipelineCommon
@@ -110,7 +110,7 @@ stages:
 
       - ${{ if ne(variables['isPackage'], true) }}:
           - job: DockerBuild
-            displayName: "Docker Build"
+            displayName: 'Docker Build'
             steps:
               - checkout: self
               - checkout: FcpPipelineCommon
@@ -145,7 +145,7 @@ stages:
               - template: variables.yaml
               - group: fcp-pipeline-snd2-variables
             pool:
-              name: "DEFRA-FFC-SND2-ubuntu2004"
+              name: 'DEFRA-FFC-SND2-ubuntu2004'
               condition: succeeded()
             dependsOn:
               - Build
@@ -163,6 +163,26 @@ stages:
                     parameters:
                       subscription: $(subscriptionPreFix)-SND2
                       isTemporary: true
+                  - template: /ado-pipeline/provision/database-check.yaml
+                    parameters:
+                      subscription: $(subscriptionPreFix)-SND2
+                  - template: /ado-pipeline/provision/database-provisioning.yaml
+                    parameters:
+                      subscription: $(subscriptionPreFix)-SND2
+                      isTemporary: true
+                      databaseName: $(DbCheck.databaseName)
+                      identityName: $(resourceProvisioning.identityName)
+                  - template: /ado-pipeline/provision/database-migration.yaml
+                    parameters:
+                      subscription: $(subscriptionPreFix)-SND2
+                      isTemporary: true
+                      databaseName: $(DbCheck.databaseName)
+                  - template: /ado-pipeline/provision/database-privileges.yaml
+                    parameters:
+                      subscription: $(subscriptionPreFix)-SND2
+                      isTemporary: true
+                      databaseName: $(DbCheck.databaseName)
+                      identityName: $(resourceProvisioning.identityName)
 
               - deployment: TempDeploy
                 variables:
@@ -172,6 +192,8 @@ stages:
                     value: $[ dependencies.provisioning.outputs['resourceProvisioning.identityClientId'] ]
                   - name: identityResourceId
                     value: $[ dependencies.provisioning.outputs['resourceProvisioning.identityResourceId'] ]
+                  - name: databaseName
+                    value: $[ dependencies.provisioning.outputs['DbCheck.databaseName'] ]
                 displayName: Deploy
                 environment: snd2-temp
                 dependsOn: provisioning
@@ -198,7 +220,7 @@ stages:
               - template: variables.yaml
               - group: fcp-pipeline-snd2-variables
             pool:
-              name: "DEFRA-FFC-SND2-ubuntu2004"
+              name: 'DEFRA-FFC-SND2-ubuntu2004'
               condition: succeeded()
             dependsOn:
               - Build

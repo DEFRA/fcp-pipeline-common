@@ -61,5 +61,12 @@ steps:
         echo "##vso[build.updatebuildnumber]$(Build.SourceBranchName)  $version"
       fi
 
+      source ./fcp-pipeline-common/common/shared_functions.sh
+      PROVISIONING_YAML_FILE="$(appName)/provision.azure.yaml"
+      HAS_DATABASE=$(has_database "$PROVISIONING_YAML_FILE")
+      echo "##vso[task.setvariable variable=hasDatabase;isOutput=true]$HAS_DATABASE"
+
+
+
     displayName: Set global App Version
     name: AppVersionTask
