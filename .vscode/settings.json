@@ -2,7 +2,8 @@
   "files.associations": {
     "**/ado-pipeline/**/*.yaml": "azure-pipelines",
     "**/*-pipeline.yaml": "azure-pipelines",
-    "**/variables.yaml": "azure-pipelines"
+    "**/variables.yaml": "azure-pipelines",
+    "**/ado-pipeline/provision/database-migration/docker-compose.migrate.yaml": "dockercompose"
   },
   "[azure-pipelines]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode",

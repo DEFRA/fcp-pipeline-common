@@ -6,11 +6,9 @@ parameters:
     default: false
   - name: databaseName
     type: string
-  - name: identityName
-    type: string
 steps:
   - task: AzureCLI@2
-    displayName: Db Privileges
+    displayName: Migrating db changes
     condition: succeeded()
     inputs:
       azureSubscription: ${{ parameters.subscription }}
@@ -19,16 +17,15 @@ steps:
       inlineScript: |
         if [[ "$(hasDatabase)" == "true" ]]; then      
           source ./fcp-pipeline-common/common/shared_functions.sh
+
           SCHEMA_NAME=$(get_schema_name "$(appName)" "${{ parameters.isTemporary }}" "$(prOrBranchNo)")
           DATABASE_HOST=$(targetEnvironment)$(sqlflexiServerName).postgres.database.azure.com
           DB_FULL_NAME=${{ parameters.databaseName }}
-          DB_USER_NAME=${{ parameters.identityName }}
 
-          echo "##[debug]Grant the required privileges to the database $DB_FULL_NAME for the user $DB_USER_NAME"
+          echo "##[debug]Migrating the database $DB_FULL_NAME"
 
-          run_db_command "$(sqlpostgresflexiAADGroupName)" "$DATABASE_HOST" "$DB_FULL_NAME" "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"$SCHEMA_NAME\" to \"$DB_USER_NAME\"" 
-          run_db_command "$(sqlpostgresflexiAADGroupName)" "$DATABASE_HOST" "$DB_FULL_NAME" "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA \"$SCHEMA_NAME\" to \"$DB_USER_NAME\"" 
-          run_db_command "$(sqlpostgresflexiAADGroupName)" "$DATABASE_HOST" "$DB_FULL_NAME" "GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA \"$SCHEMA_NAME\" to \"$DB_USER_NAME\""
+          RESULT=$(run_db_migration "$(appName)" "$(sqlpostgresflexiAADGroupName)" "$DATABASE_HOST" "$SCHEMA_NAME" "$DB_FULL_NAME")
+          echo "##[debug]$RESULT"
         else
           echo "##[debug]The service doesn't need a database"
         fi

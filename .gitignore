@@ -1,5 +1,4 @@
 .DS_Store
-.tests
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
@@ -8,3 +7,6 @@
 !.vscode/*.code-snippets
 !*.code-workspace
 Taskfile.yml
+# These are for local testing purpose
+.tests
+ffc-demo-apply-web/*
