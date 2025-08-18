@@ -19,7 +19,7 @@ parameters:
     default: false
   - name: sndDeployment
     type: boolean
-    default: true   
+    default: true
 
 resources:
   repositories:
@@ -43,7 +43,7 @@ variables:
   - name: prNumber
     value: $[variables['System.PullRequest.PullRequestNumber']]
   - name: isPr
-    value: ${{ eq(variables['Build.Reason'], 'PullRequest') }}    
+    value: ${{ eq(variables['Build.Reason'], 'PullRequest') }}
 
 stages:
   - stage: Build
@@ -139,100 +139,100 @@ stages:
               - template: /ado-pipeline/packageDeploy/deploy-${{ parameters.type }}.yaml
 
   - ${{ if eq(variables['IsMainBranch'], False) }}:
-    - ${{ if or( and(eq(variables['isPr'], True), eq(parameters.prDeployment, True)) , and(ne(variables['isPr'], True), eq(parameters.branchDeployment, True))) }}:
-        - stage: BetaDeployment
-          variables:
-            - template: variables.yaml
-            - group: fcp-pipeline-snd2-variables      
-          pool:
-            name: 'DEFRA-FFC-SND2-ubuntu2004'
-          condition: succeeded()
-          dependsOn:
-            - Build
-            - Promote
-          displayName: Beta Deployment
+      - ${{ if or( and(eq(variables['isPr'], True), eq(parameters.prDeployment, True)) , and(ne(variables['isPr'], True), eq(parameters.branchDeployment, True))) }}:
+          - stage: BetaDeployment
+            variables:
+              - template: variables.yaml
+              - group: fcp-pipeline-snd2-variables
+            pool:
+              name: "DEFRA-FFC-SND2-ubuntu2004"
+            condition: succeeded()
+            dependsOn:
+              - Build
+              - Promote
+            displayName: Beta Deployment
 
-          jobs:
-            - job: provisioning
-              displayName: Provisioning
-              condition: succeeded()
-              steps:
-                - checkout: self
-                - checkout: FcpPipelineCommon
-                - template: /ado-pipeline/provision/resources-provisioning.yaml
-                  parameters:
-                    subscription: $(subscriptionPreFix)-SND2
-                    isTemporary: true
-                
-            - deployment: TempDeploy
-              variables:
+            jobs:
+              - job: provisioning
+                displayName: Provisioning
+                condition: succeeded()
+                steps:
+                  - checkout: self
+                  - checkout: FcpPipelineCommon
+                  - template: /ado-pipeline/provision/resources-provisioning.yaml
+                    parameters:
+                      subscription: $(subscriptionPreFix)-SND2
+                      isTemporary: true
+
+              - deployment: TempDeploy
+                variables:
                   - name: identityName
-                    value: $[ dependencies.provisioning.outputs['resourceProvisioning.identityName'] ]   
+                    value: $[ dependencies.provisioning.outputs['resourceProvisioning.identityName'] ]
                   - name: identityClientId
                     value: $[ dependencies.provisioning.outputs['resourceProvisioning.identityClientId'] ]
                   - name: identityResourceId
                     value: $[ dependencies.provisioning.outputs['resourceProvisioning.identityResourceId'] ]
-              displayName: Deploy
-              environment: snd2-temp
-              dependsOn: provisioning
-              condition: succeeded()
-              workspace:
-                clean: all
-              strategy:
-                runOnce:
-                  deploy:
-                    steps:
-                      - checkout: self
-                      - checkout: FcpPipelineCommon
-                      - template: /ado-pipeline/Deploy/deploy.yaml
-                        parameters:
-                          env: pr
-                          subscription: $(subscriptionPreFix)-SND2
-                          acr: $(sharedAcr)
-                          isTemporary: true
-                          
-  - ${{ else }}:
-    - ${{ if eq(variables['sndDeployment'], true) }}:
-        - stage: DeploymentSND
-          variables:
-            - template: variables.yaml
-            - group: fcp-pipeline-snd2-variables      
-          pool:
-            name: 'DEFRA-FFC-SND2-ubuntu2004'
-          condition: succeeded()
-          dependsOn:
-            - Build
-            - Promote
-          displayName: SND Deployment
+                displayName: Deploy
+                environment: snd2
+                dependsOn: provisioning
+                condition: succeeded()
+                workspace:
+                  clean: all
+                strategy:
+                  runOnce:
+                    deploy:
+                      steps:
+                        - checkout: self
+                        - checkout: FcpPipelineCommon
+                        - template: /ado-pipeline/Deploy/deploy.yaml
+                          parameters:
+                            env: pr
+                            subscription: $(subscriptionPreFix)-SND2
+                            acr: $(sharedAcr)
+                            isTemporary: true
 
-          jobs:
-            - job: provisioningSND
-              displayName: Provisioning SND
-              condition: succeeded()
-              steps:
-                - checkout: self
-                - checkout: FcpPipelineCommon
-                - template: /ado-pipeline/provision/resources-provisioning.yaml
-                  parameters:
-                    subscription: $(subscriptionPreFix)-SND2
-                    isTemporary: false
-                
-            - deployment: DeploySND
-              displayName: Deploy SND
-              environment: snd2
-              dependsOn: provisioning
-              condition: succeeded()
-              workspace:
-                clean: all
-              strategy:
-                runOnce:
-                  deploy:
-                    steps:
-                      - checkout: self
-                      - checkout: FcpPipelineCommon
-                      - template: /ado-pipeline/Deploy/deploy.yaml
-                        parameters:
-                          env: pr
-                          subscription: $(subscriptionPreFix)-SND2
-                          acr: $(sharedAcr)
-                          isTemporary: false
+  - ${{ else }}:
+      - ${{ if eq(variables['sndDeployment'], true) }}:
+          - stage: DeploymentSND
+            variables:
+              - template: variables.yaml
+              - group: fcp-pipeline-snd2-variables
+            pool:
+              name: "DEFRA-FFC-SND2-ubuntu2004"
+            condition: succeeded()
+            dependsOn:
+              - Build
+              - Promote
+            displayName: SND Deployment
+
+            jobs:
+              - job: provisioningSND
+                displayName: Provisioning SND
+                condition: succeeded()
+                steps:
+                  - checkout: self
+                  - checkout: FcpPipelineCommon
+                  - template: /ado-pipeline/provision/resources-provisioning.yaml
+                    parameters:
+                      subscription: $(subscriptionPreFix)-SND2
+                      isTemporary: false
+
+              - deployment: DeploySND
+                displayName: Deploy SND
+                environment: snd2
+                dependsOn: provisioning
+                condition: succeeded()
+                workspace:
+                  clean: all
+                strategy:
+                  runOnce:
+                    deploy:
+                      steps:
+                        - checkout: self
+                        - checkout: FcpPipelineCommon
+                        - template: /ado-pipeline/Deploy/deploy.yaml
+                          parameters:
+                            env: pr
+                            subscription: $(subscriptionPreFix)-SND2
+                            acr: $(sharedAcr)
+                            isTemporary: false
