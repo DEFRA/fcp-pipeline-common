@@ -213,7 +213,7 @@ stages:
               - deployment: DeploySND
                 displayName: Deploy SND
                 environment: snd2
-                dependsOn: provisioning
+                dependsOn: provisioningSND
                 workspace:
                   clean: all
                 strategy:
