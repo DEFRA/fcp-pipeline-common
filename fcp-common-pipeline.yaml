@@ -138,7 +138,7 @@ stages:
               - checkout: FcpPipelineCommon
               - template: /ado-pipeline/packageDeploy/deploy-${{ parameters.type }}.yaml
 
-  - ${{ if eq(variables['IsMainBranch'], False) }}:
+  - ${{ if eq(variables['isMainBranch'], False) }}:
       - ${{ if or( and(eq(variables['isPr'], True), eq(parameters.prDeployment, True)) , and(ne(variables['isPr'], True), eq(parameters.branchDeployment, True))) }}:
           - stage: BetaDeployment
             variables:
