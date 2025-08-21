@@ -30,6 +30,7 @@ variables:
 ```
 
 ## Provisining file `provision.azure.yaml`
+
 ```yaml
 resources:
   identity: identity-name

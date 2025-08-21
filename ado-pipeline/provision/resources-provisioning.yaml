@@ -6,7 +6,7 @@ parameters:
     default: false
 steps:
   - task: AzureCLI@2
-    displayName: 'Resource Provisioning'
+    displayName: "Resource Provisioning"
     name: resourceProvisioning
     inputs:
       azureSubscription: ${{ parameters.subscription }}
@@ -22,7 +22,7 @@ steps:
 
         namespace=$(get_namespace_name "$(isMainBranch)" "$(appName)" "$(releaseVersion)" "$(altEnvironment)")
         echo "##[debug]The namespace is $namespace"
-       
+
         # Setting the parameters for the Bicep deployment
 
         location="northeurope"
@@ -31,7 +31,7 @@ steps:
 
         PROVISIONING_YAML_FILE="$(appName)/provision.azure.yaml"
 
-        echo "##[debug]Generation the povisioning object: get_provisioning_object $PROVISIONING_YAML_FILE $(appName) $(prOrBranchNo) ${{ parameters.isTemporary }}"
+        echo "##[debug]Generation the provisioning object: get_provisioning_object $PROVISIONING_YAML_FILE $(appName) $(prOrBranchNo) ${{ parameters.isTemporary }}"
         PROVISIONING_OBJECT=$(get_provisioning_object "$PROVISIONING_YAML_FILE" "$(appName)" "$(prOrBranchNo)" "${{ parameters.isTemporary }}")
 
         echo "##[debug]The Provisioning Object is $PROVISIONING_OBJECT"
@@ -103,7 +103,7 @@ steps:
         echo "##[debug]Identity Name: $identityName"
         echo "##[debug]Identity Client ID: $identityClientId"
         echo "##[debug]Identity Resource ID: $identityResourceId"
-       
+
         echo "##vso[task.setvariable variable=identityName;isOutput=true]$identityName"
         echo "##vso[task.setvariable variable=identityClientId;isOutput=true]$identityClientId"
         echo "##vso[task.setvariable variable=identityResourceId;isOutput=true]$identityResourceId"
