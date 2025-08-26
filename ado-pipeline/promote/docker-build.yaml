@@ -6,6 +6,8 @@ parameters:
     type: string
   - name: acrName
     type: string
+  - name: releaseVersion
+    type: string
 steps:
   - bash: |
       echo "Building Docker image using Dockerfile at path: ${{ parameters.dockerFilePath }}"
@@ -21,4 +23,4 @@ steps:
       inlineScript: |
         az acr login --name ${{ parameters.acrName }}
         cd "$(appName)"
-        az acr build -r ${{ parameters.acrName }} -t $(appName):$(releaseVersion)  -f ${{ parameters.dockerFilePath }} .
+        az acr build -r ${{ parameters.acrName }} -t $(appName):${{ parameters.releaseVersion }}  -f ${{ parameters.dockerFilePath }} .
