@@ -9,7 +9,7 @@ steps:
       case "${{ parameters.appFrameworkType }}" in
         nodejs)
           echo "Setting version for Node.js..."
-          npmVersionString=$(grep version $(appName)/package.json | awk -F \" '{print $4}')
+          npmVersionString=$(grep version $(appName)/package.json | awk -F " '{print $4}'")
           echo "##vso[task.setvariable variable=appVersion]$npmVersionString"
           ;;
         dotnet)
@@ -39,6 +39,7 @@ steps:
           version="$(appVersion)-beta.$(prNumber)"
           echo "##vso[task.setvariable variable=PrOrBranchNo;isOutput=true]$prNumber"
         else
+          source ./fcp-pipeline-common/common/database_utils.sh
           source ./fcp-pipeline-common/common/shared_functions.sh
           branchId=$(readable_hash_id "$(branchName)")
           version="$(appVersion)-alpha.$branchId"
@@ -61,7 +62,6 @@ steps:
         echo "##vso[build.updatebuildnumber]$(Build.SourceBranchName)  $version"
       fi
 
-      source ./fcp-pipeline-common/common/shared_functions.sh
       PROVISIONING_YAML_FILE="$(appName)/provision.azure.yaml"
       HAS_DATABASE=$(has_database "$PROVISIONING_YAML_FILE")
       echo "##vso[task.setvariable variable=hasDatabase;isOutput=true]$HAS_DATABASE"

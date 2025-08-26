@@ -18,6 +18,7 @@ steps:
       scriptLocation: inlineScript
       inlineScript: |
         if [[ "$(hasDatabase)" == "true" ]]; then      
+          source ./fcp-pipeline-common/common/database_utils.sh
           source ./fcp-pipeline-common/common/shared_functions.sh
           SCHEMA_NAME=$(get_schema_name "$(appName)" "${{ parameters.isTemporary }}" "$(prOrBranchNo)")
           DATABASE_HOST=$(targetEnvironment)$(sqlflexiServerName).postgres.database.azure.com

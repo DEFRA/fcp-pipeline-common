@@ -16,6 +16,7 @@ steps:
       kubeloginVersion: 'latest'
 
   - bash: |
+      source ./fcp-pipeline-common/common/database_utils.sh
       source ./fcp-pipeline-common/common/shared_functions.sh
       namespace=$(get_namespace_name "$(isMainBranch)" "$(appName)" "$(releaseVersion)" "$(altEnvironment)")
       echo the namespace is $namespace
@@ -33,7 +34,7 @@ steps:
 
       dbConfig=""
       if [[ "$(hasDatabase)"=="true" ]]; then
-        source ./fcp-pipeline-common/common/shared_functions.sh
+      source ./fcp-pipeline-common/common/database_utils.sh
         SCHEMA_NAME=$(get_schema_name "$(appName)" "${{ parameters.isTemporary }}" "$(prOrBranchNo)")
         dbConfig="postgresService.postgresUser=$(identityName),postgresService.postgresDb=$(databaseName),postgresService.postgresSchema=$SCHEMA_NAME"
       else
