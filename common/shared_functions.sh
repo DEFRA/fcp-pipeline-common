@@ -52,7 +52,7 @@ get_federation_name() {
   echo "$result"
 }
 
-# Creating temproray resource names for resources which are in use for pr(beta) deployment 
+# Creating temproray resource names for resources which are in use for pr(beta) deployment
 get_temp_resource_name() {
   local appName="$1"
   local prNumberOrBranchName="$2"
@@ -99,7 +99,7 @@ get_provisioning_object() {
   local appName="$2"
   local prNumberOrBranchName="$3"
   local isTemporary="$4"
-  
+
   # === Step 1: Read and convert YAML to JSON
   obj=$(yq eval -o=json "$yaml_file")
 
@@ -141,21 +141,21 @@ get_provisioning_object() {
 
 
 
-run_db_migration() {
-  local appName="$1"
-  local DATABASE_ADMIN="$2"
-  local DATABASE_HOST="$3"
-  local SCHEMA="$4"
-  local DATABASE="$5"
+# run_db_migration() {
+#   local appName="$1"
+#   local DATABASE_ADMIN="$2"
+#   local DATABASE_HOST="$3"
+#   local SCHEMA="$4"
+#   local DATABASE="$5"
 
-  local DB_PASSWORD
-  DB_PASSWORD=$(az account get-access-token --resource-type oss-rdbms --query accessToken --output tsv)
+#   local DB_PASSWORD
+#   DB_PASSWORD=$(az account get-access-token --resource-type oss-rdbms --query accessToken --output tsv)
 
-  result=$(docker run --rm -v "${PWD}"/"${appName}"/changelog:/liquibase/changelog \
-                    liquibase/liquibase:4.12.0 update --driver=org.postgresql.Driver \
-    --changeLogFile=/changelog/db.changelog.xml \
-    --url=jdbc:postgresql://"$DATABASE_HOST":5432/"$DATABASE" \
-    --username="$DATABASE_ADMIN" --password="$DB_PASSWORD" --defaultSchemaName="$SCHEMA" )
+#   result=$(docker run --rm -v "${PWD}"/"${appName}"/changelog:/liquibase/changelog \
+#                     liquibase/liquibase:4.12.0 update --driver=org.postgresql.Driver \
+#     --changeLogFile=/changelog/db.changelog.xml \
+#     --url=jdbc:postgresql://"$DATABASE_HOST":5432/"$DATABASE" \
+#     --username="$DATABASE_ADMIN" --password="$DB_PASSWORD" --defaultSchemaName="$SCHEMA" )
 
-  echo "$result"
-}
+#   echo "$result"
+# }
