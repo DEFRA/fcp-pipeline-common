@@ -1,0 +1,19 @@
+parameters:
+  - name: subscription
+    type: string
+steps:
+  - bash: |
+      echo "##[debug]Check if the service need a database"
+      if [[ "$(hasDatabase)" == "true" ]]; then
+        source ./fcp-pipeline-common/common/shared_functions.sh
+        
+        PROVISIONING_YAML_FILE="$(appName)/provision.azure.yaml"
+        DATABASE_NAME=$(get_database_name "$PROVISIONING_YAML_FILE" "$(altEnvironment)")
+
+        echo "##vso[task.setvariable variable=databaseName;isOutput=true]$DATABASE_NAME"
+
+      else
+        echo "##[debug]The service doesn't need a database"
+      fi
+    name: DbCheck
+    displayName: Database Check

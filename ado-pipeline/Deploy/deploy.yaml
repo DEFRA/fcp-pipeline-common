@@ -25,12 +25,32 @@ steps:
   - bash: |
       source ./fcp-pipeline-common/common/shared_functions.sh
 
-      echo executing command: "$(appName)/appconfig/${{ parameters.env }}.yaml" "$(appName)" "$(prOrBranchNo)" "${{ parameters.isTemporary }}"
+      echo "##[debug]Executing the command: $(appName)/appconfig/${{ parameters.env }}.yaml $(appName) $(prOrBranchNo) ${{ parameters.isTemporary }}"
       configVars=$(convert_config "$(appName)/appconfig/${{ parameters.env }}.yaml" "$(appName)" "$(prOrBranchNo)" "${{ parameters.isTemporary }}")
 
-      echo "configVars: $configVars"
+      echo "##[debug]ConfigVars: $configVars"
+
+
+      dbConfig=""
+      if [[ "$(hasDatabase)"=="true" ]]; then
+        source ./fcp-pipeline-common/common/shared_functions.sh
+        SCHEMA_NAME=$(get_schema_name "$(appName)" "${{ parameters.isTemporary }}" "$(prOrBranchNo)")
+        dbConfig="postgresService.postgresUser=$(identityName),postgresService.postgresDb=$(databaseName),postgresService.postgresSchema=$SCHEMA_NAME"
+      else
+        echo "##[debug] Service doesn't have a database, skipping dbConfig"
+      fi
+
+      if [[ "${{ parameters.isTemporary }}" == "true" ]]; then
+        prConfig="pr=$(prOrBranchNo)"
+      else
+        prValue=$(printf '%s' "$(altEnvironment)" | tr '[:upper:]' '[:lower:]')
+        prConfig="pr=$prValue"
+      fi
 
       echo "##vso[task.setvariable variable=configVars]$configVars"
+      echo "##vso[task.setvariable variable=prConfig]$prConfig"
+      echo "##vso[task.setvariable variable=dbConfig]$dbConfig"
+
 
     displayName: 'prepare configuration'
 
@@ -62,6 +82,7 @@ steps:
         image=${{ parameters.acr }}.azurecr.io/$(appName):$(releaseVersion)
         azureIdentity.clientID=$(identityClientId)
         azureIdentity.resourceID=$(identityResourceId)
-        postgresService.postgresUser=$(identityName)
         secretProviderClass.azure.tenantId=$(tenantId)
         $(configVars)
+        $(prConfig)
+        $(dbConfig)

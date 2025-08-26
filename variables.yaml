@@ -7,3 +7,5 @@ variables:
     value: $[ stageDependencies.Build.InitAndBuild.outputs['AppVersionTask.PrOrBranchNo'] ]    
   - name: namespace
     value: $[ stageDependencies.Build.InitAndBuild.outputs['ExtractNamespace.namespace'] ]    
+  - name: hasDatabase
+    value: $[ stageDependencies.Build.InitAndBuild.outputs['AppVersionTask.hasDatabase'] ]
