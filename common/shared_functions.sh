@@ -137,25 +137,3 @@ get_provisioning_object() {
   echo "$obj" | jq .
 }
 
-
-
-
-
-# run_db_migration() {
-#   local appName="$1"
-#   local DATABASE_ADMIN="$2"
-#   local DATABASE_HOST="$3"
-#   local SCHEMA="$4"
-#   local DATABASE="$5"
-
-#   local DB_PASSWORD
-#   DB_PASSWORD=$(az account get-access-token --resource-type oss-rdbms --query accessToken --output tsv)
-
-#   result=$(docker run --rm -v "${PWD}"/"${appName}"/changelog:/liquibase/changelog \
-#                     liquibase/liquibase:4.12.0 update --driver=org.postgresql.Driver \
-#     --changeLogFile=/changelog/db.changelog.xml \
-#     --url=jdbc:postgresql://"$DATABASE_HOST":5432/"$DATABASE" \
-#     --username="$DATABASE_ADMIN" --password="$DB_PASSWORD" --defaultSchemaName="$SCHEMA" )
-
-#   echo "$result"
-# }
