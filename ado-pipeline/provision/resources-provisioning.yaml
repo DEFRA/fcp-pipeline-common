@@ -15,7 +15,6 @@ steps:
       inlineScript: |
         echo "##[debug]isTemporary is:  ${{ parameters.isTemporary }}"
 
-        source ./fcp-pipeline-common/common/database_utils.sh
         source ./fcp-pipeline-common/common/shared_functions.sh
 
         federation=$(get_federation_name "$(appName)" "$(altEnvironment)" "$(releaseVersion)")

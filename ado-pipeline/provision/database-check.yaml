@@ -5,7 +5,6 @@ steps:
   - bash: |
       echo "##[debug]Check if the service need a database"
       if [[ "$(hasDatabase)" == "true" ]]; then
-        source ./fcp-pipeline-common/common/database_utils.sh
         source ./fcp-pipeline-common/common/shared_functions.sh
         
         PROVISIONING_YAML_FILE="$(appName)/provision.azure.yaml"

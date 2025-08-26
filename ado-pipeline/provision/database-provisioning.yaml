@@ -19,7 +19,6 @@ steps:
       inlineScript: |
         if [[ "$(hasDatabase)" == "true" ]]; then      
           echo "##[debug]Creating the database"
-          source ./fcp-pipeline-common/common/database_utils.sh
           source ./fcp-pipeline-common/common/shared_functions.sh
 
           DB_FULL_NAME=${{ parameters.databaseName }}
