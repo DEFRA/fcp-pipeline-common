@@ -119,7 +119,6 @@ stages:
                   dockerFilePath: ${{ parameters.dockerFilePath }}
                   subscription: $(sharedSubscription)
                   acrName: $(sharedAcr)
-                  releaseVersion: $(releaseVersion)
 
   - ${{ if eq(variables['isPackage'], true) }}:
       - stage: PackageDeployment
