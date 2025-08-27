@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+echo appVersion is $(releaseVersion)
+echo buildVer is $(buildVer)
+echo isMainBranch is $(isMainBranch)
+
+git config --global user.email "ffc@defra.gov.uk"
+git config --global user.name "FCP ADO Pipeline"
+
+cd $(appName)
+
+echo "//registry.npmjs.org/:_authToken=$(npm-publish-token)" > .npmrc
+
+npm ci --ignore-scripts --omit=dev
+
+if [[ "$(isMainBranch)" == "True" ]]; then
+  npm publish
+else
+  version="$(releaseVersion)"
+  npm version "$version"
+  npm publish --tag next
+fi
+
+[ -f npm-debug.log ] && cat npm-debug.log
+cd ..

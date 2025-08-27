@@ -10,3 +10,4 @@ Taskfile.yml
 # These are for local testing purpose
 .tests
 ffc-demo-apply-web/*
+recipe.yaml
