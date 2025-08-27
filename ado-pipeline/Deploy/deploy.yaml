@@ -35,7 +35,8 @@ steps:
       if [[ "$(hasDatabase)"=="true" ]]; then
         source ./fcp-pipeline-common/common/shared_functions.sh
         SCHEMA_NAME=$(get_schema_name "$(appName)" "${{ parameters.isTemporary }}" "$(prOrBranchNo)")
-        dbConfig="postgresService.postgresUser=$(identityName),postgresService.postgresDb=$(databaseName),postgresService.postgresSchema=$SCHEMA_NAME"
+        DATABASE_HOST=$(targetEnvironment)$(sqlflexiServerName).postgres.database.azure.com
+        dbConfig="postgresService.postgresqlHost=$DATABASE_HOST,postgresService.postgresUser=$(identityName),postgresService.postgresDb=$(databaseName),postgresService.postgresSchema=$SCHEMA_NAME"
       else
         echo "##[debug] Service doesn't have a database, skipping dbConfig"
       fi
@@ -43,8 +44,7 @@ steps:
       if [[ "${{ parameters.isTemporary }}" == "true" ]]; then
         prConfig="pr=$(prOrBranchNo)"
       else
-        prValue=$(printf '%s' "$(altEnvironment)" | tr '[:upper:]' '[:lower:]')
-        prConfig="pr=$prValue"
+        prConfig=""
       fi
 
       echo "##vso[task.setvariable variable=configVars]$configVars"

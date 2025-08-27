@@ -195,7 +195,7 @@ stages:
                   - name: databaseName
                     value: $[ dependencies.provisioning.outputs['DbCheck.databaseName'] ]
                 displayName: Deploy
-                environment: snd2-temp
+                environment: SND2-TEMP
                 dependsOn: provisioning
                 condition: succeeded()
                 workspace:
@@ -214,7 +214,7 @@ stages:
                             isTemporary: true
 
   - ${{ else }}:
-      - ${{ if eq(variables['sndDeployment'], true) }}:
+      - ${{ if eq(parameters.sndDeployment, true) }}:
           - stage: DeploymentSND
             variables:
               - template: variables.yaml
@@ -238,10 +238,39 @@ stages:
                     parameters:
                       subscription: $(subscriptionPreFix)-SND2
                       isTemporary: false
+                  - template: /ado-pipeline/provision/database-check.yaml
+                    parameters:
+                      subscription: $(subscriptionPreFix)-SND2
+                  - template: /ado-pipeline/provision/database-provisioning.yaml
+                    parameters:
+                      subscription: $(subscriptionPreFix)-SND2
+                      isTemporary: false
+                      databaseName: $(DbCheck.databaseName)
+                      identityName: $(resourceProvisioning.identityName)
+                  - template: /ado-pipeline/provision/database-migration.yaml
+                    parameters:
+                      subscription: $(subscriptionPreFix)-SND2
+                      isTemporary: false
+                      databaseName: $(DbCheck.databaseName)
+                  - template: /ado-pipeline/provision/database-privileges.yaml
+                    parameters:
+                      subscription: $(subscriptionPreFix)-SND2
+                      isTemporary: false
+                      databaseName: $(DbCheck.databaseName)
+                      identityName: $(resourceProvisioning.identityName)
 
               - deployment: DeploySND
+                variables:
+                  - name: identityName
+                    value: $[ dependencies.provisioningSND.outputs['resourceProvisioning.identityName'] ]
+                  - name: identityClientId
+                    value: $[ dependencies.provisioningSND.outputs['resourceProvisioning.identityClientId'] ]
+                  - name: identityResourceId
+                    value: $[ dependencies.provisioningSND.outputs['resourceProvisioning.identityResourceId'] ]
+                  - name: databaseName
+                    value: $[ dependencies.provisioningSND.outputs['DbCheck.databaseName'] ]
                 displayName: Deploy SND
-                environment: snd2
+                environment: SND2
                 dependsOn: provisioningSND
                 condition: succeeded()
                 workspace:
@@ -254,7 +283,7 @@ stages:
                         - checkout: FcpPipelineCommon
                         - template: /ado-pipeline/Deploy/deploy.yaml
                           parameters:
-                            env: pr
+                            env: snd
                             subscription: $(subscriptionPreFix)-SND2
                             acr: $(sharedAcr)
                             isTemporary: false
