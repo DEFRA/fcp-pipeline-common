@@ -17,7 +17,7 @@ steps:
 
         source ./fcp-pipeline-common/common/shared_functions.sh
 
-        federation=$(get_federation_name "$(appName)" "$(altEnvironment)" "$(releaseVersion)")
+        federation=$(get_federation_name "$(appName)" "$(altEnvironment)" "$(releaseVersion)" "$(isMainBranch)")
         echo "##[debug]The federation name is $federation"
 
         namespace=$(get_namespace_name "$(isMainBranch)" "$(appName)" "$(releaseVersion)" "$(altEnvironment)")

@@ -38,6 +38,7 @@ get_federation_name() {
   local appName="$1"
   local altEnvironment="$2"
   local releaseVersion="$3"
+  local isMainBranch="$4"
 
   if [[ "$isMainBranch" == "True" ]]; then
     federationName=$(echo "$appName"-"$altEnvironment" | awk '{ print tolower($0) }')
