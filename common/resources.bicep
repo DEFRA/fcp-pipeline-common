@@ -95,11 +95,11 @@ module storageModule 'modules/storage_account.bicep' = [
 ]
 
 output queueRoleCreates array = [
-  for i in range(0, length(resourcesObject.resources.?queues ?? [])): concat(queueModule[i].outputs.roleCreates)
+  for i in range(0, length(resourcesObject.resources.?service_bus.?queues ?? [])): concat(queueModule[i].outputs.roleCreates)
 ]
 
 output topicRoleCreates array = [
-  for i in range(0, length(resourcesObject.resources.?topics ?? [])): concat(topicModule[i].outputs.roleCreates)
+  for i in range(0, length(resourcesObject.resources.?service_bus.?topics ?? [])): concat(topicModule[i].outputs.roleCreates)
 ]
 
 output identityResourceId string = identity.id

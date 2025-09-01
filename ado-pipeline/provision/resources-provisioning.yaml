@@ -79,13 +79,15 @@ steps:
 
         outputs=$(echo "$DEPLOYMENT_RESULT" | jq -r '.properties.outputs')
 
+        echo "##[debug]Bicep Outputs: $outputs"
+
         # Creating role assignments
         echo "##[debug]Creating role assignments..."
 
         scripts=$(echo "$outputs" | jq -r '.queueRoleCreates.value + .topicRoleCreates.value | flatten | .[]')
 
         while IFS= read -r cmd; do
-          echo "Running: $cmd"
+          echo "##[debug]Running: $cmd"
           eval "$cmd"
           if [ $? -ne 0 ]; then
             echo "##[error]❌ Command failed: $cmd"
@@ -99,10 +101,6 @@ steps:
         identityClientId=$(echo "$outputs" | jq -r '.identityClientId.value')
         identityResourceId=$(echo "$outputs" | jq -r '.identityResourceId.value')
         identityName=$(echo "$outputs" | jq -r '.identityName.value')
-
-        echo "##[debug]Identity Name: $identityName"
-        echo "##[debug]Identity Client ID: $identityClientId"
-        echo "##[debug]Identity Resource ID: $identityResourceId"
 
         echo "##vso[task.setvariable variable=identityName;isOutput=true]$identityName"
         echo "##vso[task.setvariable variable=identityClientId;isOutput=true]$identityClientId"
