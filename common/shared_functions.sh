@@ -104,29 +104,29 @@ get_provisioning_object() {
 
   if [[ "$isTemporary" == "True" ]]; then
     # === Step 2: Loop over queues and update names if temporary
-    hasQueue=$(yq eval '.resources | has("queues")' "$yaml_file")
+    hasQueue=$(yq eval '.resources.service_bus | has("queues")' "$yaml_file")
     if [[ "$hasQueue" == "true" ]]; then
-      queue_count=$(echo "$obj" | jq '.resources.queues | length')
+      queue_count=$(echo "$obj" | jq '.resources.service_bus.queues | length')
       for i in $(seq 0 $((queue_count - 1))); do
-        old_name=$(echo "$obj" | jq -r ".resources.queues[$i].name")
+        old_name=$(echo "$obj" | jq -r ".resources.service_bus.queues[$i].name")
         if [[ "$isTemporary" == "True" ]]; then
           new_name=$(get_temp_resource_name "$appName" "$prNumberOrBranchName" "$old_name")
           obj=$(echo "$obj" | jq --arg idx "$i" --arg new_name "$new_name" '
-            .resources.queues[$idx | tonumber].name = $new_name
+            .resources.service_bus.queues[$idx | tonumber].name = $new_name
           ')
         fi
       done
     fi
     # === Step 3: Loop over topics and update names if temporary
-    hasTopic=$(yq eval '.resources | has("topics")' "$yaml_file")
+    hasTopic=$(yq eval '.resources.service_bus | has("topics")' "$yaml_file")
     if [[ "$hasTopic" == "true" ]]; then
-      topic_count=$(echo "$obj" | jq '.resources.topics | length')
+      topic_count=$(echo "$obj" | jq '.resources.service_bus.topics | length')
       for i in $(seq 0 $((topic_count - 1))); do
-        old_name=$(echo "$obj" | jq -r ".resources.topics[$i].name")
+        old_name=$(echo "$obj" | jq -r ".resources.service_bus.topics[$i].name")
         if [[ "$isTemporary" == "True" ]]; then
           new_name=$(get_temp_resource_name "$appName" "$prNumberOrBranchName" "$old_name")
           obj=$(echo "$obj" | jq --arg idx "$i" --arg new_name "$new_name" '
-            .resources.topics[$idx | tonumber].name = $new_name
+            .resources.service_bus.topics[$idx | tonumber].name = $new_name
           ')
         fi
       done
