@@ -30,7 +30,6 @@ steps:
 
       echo "##[debug]ConfigVars: $configVars"
 
-
       dbConfig=""
       if [[ "$(hasDatabase)"=="true" ]]; then
         source ./fcp-pipeline-common/common/shared_functions.sh
@@ -47,10 +46,12 @@ steps:
         prConfig=""
       fi
 
+      infoConfig="release.repo=$(appName),release.branch=$(branchName),release.prNo=$(prOrBranchNo)"
+
       echo "##vso[task.setvariable variable=configVars]$configVars"
       echo "##vso[task.setvariable variable=prConfig]$prConfig"
       echo "##vso[task.setvariable variable=dbConfig]$dbConfig"
-
+      echo "##vso[task.setvariable variable=infoConfig]$infoConfig"
 
     displayName: 'prepare configuration'
 
@@ -84,5 +85,6 @@ steps:
         azureIdentity.resourceID=$(identityResourceId)
         secretProviderClass.azure.tenantId=$(tenantId)
         $(configVars)
+        $(infoConfig)
         $(prConfig)
         $(dbConfig)
