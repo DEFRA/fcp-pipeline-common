@@ -10,7 +10,11 @@ parameters:
     default: false
   - name: dockerFilePath
     type: string
-    default: 'Dockerfile'
+    default: Dockerfile
+  - name: testDockerComposeFile
+    type: string
+    default: docker-compose.test.yaml  
+    
   - name: prDeployment
     type: boolean
     default: false
@@ -119,6 +123,18 @@ stages:
                   dockerFilePath: ${{ parameters.dockerFilePath }}
                   subscription: $(sharedSubscription)
                   acrName: $(sharedAcr)
+
+          - job: TestsDockerCompose
+            displayName: Tests With Docker Compose
+            dependsOn: DockerBuild
+            condition: succeeded()
+            steps:
+              - checkout: self
+              - checkout: FcpPipelineCommon
+              - template: /ado-pipeline/promote/tests-docker-compose.yaml
+                parameters:   
+                  testDockerComposeFile: ${{ parameters.testDockerComposeFile }}
+                  subscription: $(sharedSubscription)
 
   - ${{ if eq(variables['isPackage'], true) }}:
       - stage: PackageDeployment

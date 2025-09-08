@@ -1,7 +1,7 @@
 parameters:
   - name: dockerFilePath
     type: string
-    default: "Dockerfile"
+    default: Dockerfile
   - name: subscription
     type: string
   - name: acrName

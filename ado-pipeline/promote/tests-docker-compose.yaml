@@ -1,0 +1,58 @@
+parameters:
+  - name: testDockerComposeFile
+    type: string
+    default: docker-compose.test.yaml
+  - name: subscription
+    type: string
+
+steps:
+  - bash: |
+      echo "##[debug]Checking if the file ${{ parameters.testDockerComposeFile }} exists..."
+
+      cleanup() {
+          local version=$(releaseVersion)
+          sanitizedVersion="${version//./p}"
+          docker compose -p $(appName)-"$sanitizedVersion"-$(prOrBranchNo) -f $(appName)/docker-compose.yaml -f $(appName)/docker-compose.test.yaml down -v
+          if [[ -f "$(appName)/docker-compose.migrate.yaml" ]]; then
+            docker compose -p $(appName)-"$sanitizedVersion"-$(prOrBranchNo) -f $(appName)/docker-compose.migrate.yaml down -v        
+          fi
+      }
+        
+
+      if [[ -f "$(appName)/${{ parameters.testDockerComposeFile }}" ]]; then
+        echo "##[debug]Docker compose file for the testing exists."
+        echo "##[debug]Runing the docker compose file: ${{ parameters.testDockerComposeFile }}"
+       
+        trap cleanup EXIT
+        local version=$(releaseVersion)
+        sanitizedVersion="${version//./p}"
+
+        mkdir -p -m 777 $(appName)/test-output
+        if [[ -f "$(appName)/docker-compose.migrate.yaml" ]]; then
+          echo "##[debug]SanitizedVersion is $sanitizedVersion"
+          docker compose -p $(appName)-"$sanitizedVersion"-$(prOrBranchNo) -f $(appName)/docker-compose.migrate.yaml run database-up
+        fi
+        docker compose -p $(appName)-"$sanitizedVersion"-$(prOrBranchNo)  -f $(appName)/docker-compose.yaml -f $(appName)/docker-compose.test.yaml run $(appName)
+      else
+        echo "##[debug]Docker compose file for the testing is not exist."
+      fi
+
+    displayName: 'Run tests with Docker Compose'
+
+  - task: PublishPipelineArtifact@1
+    displayName: Test - Publish Report
+    inputs:
+      targetPath: $(appName)/test-output
+      artifact: dockercompose-test-results
+    continueOnError: false
+    condition: succeeded()
+
+  - task: PublishTestResults@2
+    inputs:
+      testResultsFormat: JUnit
+      testRunTitle: Cocker Compose test
+      testResultsFiles: $(appName)/test-output/junit.xml
+      failTaskOnFailedTests: true
+    displayName: 'Docker Compose Test Publish Test Results'
+    continueOnError: false
+    condition: succeeded()   
