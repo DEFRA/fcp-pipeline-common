@@ -1,0 +1,40 @@
+parameters:
+  - name: appName
+    type: string
+  - name: databaseName
+    type: string
+  - name: prOrBranchNo
+    type: string
+
+variables:
+  - group: fcp-pipeline-common-variables
+  - group: fcp-pipeline-common-secrets
+  - group: fcp-pipeline-snd2-variables
+
+resources:
+  repositories:
+    - repository: FcpPipelineCommon
+      name: defra/fcp-pipeline-common
+      endpoint: DEFRA-ADP
+      type: github
+      ref: refs/heads/pl-757
+stages:
+  - stage: BetaDestroy
+    pool:
+      name: "DEFRA-FFC-SND2-ubuntu2004"
+    displayName: Destroy Beta Deployment Resources
+
+    jobs:
+      - job: Decommissioning
+        displayName: Decommissioning
+        condition: succeeded()
+        steps:
+          - checkout: self
+          - checkout: FcpPipelineCommon
+          - template: /ado-pipeline/provision/database-destroy.yaml
+            parameters:
+              subscription: $(subscriptionPreFix)-SND2
+              databaseName: ${{ parameters.databaseName }}
+              prOrBranchNo: ${{ parameters.prOrBranchNo }}
+              appName: ${{ parameters.appName }}
+

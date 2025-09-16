@@ -2,6 +2,7 @@
   "files.associations": {
     "**/ado-pipeline/**/*.yaml": "azure-pipelines",
     "**/*-pipeline.yaml": "azure-pipelines",
+    "fcp-common-pipeline-destroy.yaml": "azure-pipelines",
     "**/variables.yaml": "azure-pipelines"
   },
   "[azure-pipelines]": {
