@@ -58,7 +58,11 @@ steps:
       if [[ "$(isPr)" == "True" ]]; then
         echo "##vso[build.updatebuildnumber]$(System.PullRequest.SourceBranch)  $version"
       else
-        echo "##vso[build.updatebuildnumber]$(Build.SourceBranchName)  $version"
+        if [[ "$(isMainBranch)" == "True" ]]; then
+          echo "##vso[build.updatebuildnumber]$version"
+        else
+          echo "##vso[build.updatebuildnumber]$(Build.SourceBranchName)  $version"
+        fi
       fi
 
       source ./fcp-pipeline-common/common/shared_functions.sh

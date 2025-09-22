@@ -13,8 +13,8 @@ parameters:
     default: Dockerfile
   - name: testDockerComposeFile
     type: string
-    default: docker-compose.test.yaml  
-    
+    default: docker-compose.test.yaml
+
   - name: prDeployment
     type: boolean
     default: false
@@ -31,7 +31,7 @@ resources:
       name: defra/fcp-pipeline-common
       endpoint: DEFRA-ADP
       type: github
-      # ref: refs/heads/branch-name
+      ref: refs/heads/pl764
 
 variables:
   - group: fcp-pipeline-common-variables
@@ -102,27 +102,64 @@ stages:
             parameters:
               appFrameworkType: ${{ parameters.appFrameworkType }}
 
-      - job: HelmTemplate
-        displayName: 'Build Helm Template'
-        steps:
-          - checkout: self
-          - checkout: FcpPipelineCommon
-          - template: /ado-pipeline/promote/build-helm.yaml
-            parameters:
-              subscription: $(sharedSubscription)
-              acrName: $(sharedAcr)
-
       - ${{ if ne(variables['isPackage'], true) }}:
+          - job: HelmTemplate
+            displayName: 'Build Helm Template'
+            steps:
+              - checkout: self
+              - checkout: FcpPipelineCommon
+
+              - template: /ado-pipeline/promote/build-helm.yaml
+                parameters:
+                  subscription: $(SubscriptionSND)
+                  acrName: $(AcrSND)
+
+              - ${{ if eq(variables['isMainBranch'], True) }}:
+                - template: /ado-pipeline/promote/build-helm.yaml
+                  parameters:
+                    subscription: $(SubscriptionDEV)
+                    acrName: $(AcrDEV)
+
+                - template: /ado-pipeline/promote/build-helm.yaml
+                  parameters:
+                    subscription: $(SubscriptionPRE)
+                    acrName: $(AcrPRE)
+                    
+                - template: /ado-pipeline/promote/build-helm.yaml
+                  parameters:
+                    subscription: $(SubscriptionPRD)
+                    acrName: $(AcrPRD)
+
           - job: DockerBuild
             displayName: 'Docker Build'
             steps:
               - checkout: self
               - checkout: FcpPipelineCommon
+
               - template: /ado-pipeline/promote/docker-build.yaml
                 parameters:
                   dockerFilePath: ${{ parameters.dockerFilePath }}
-                  subscription: $(sharedSubscription)
-                  acrName: $(sharedAcr)
+                  subscription: $(SubscriptionSND)
+                  acrName: $(AcrSND)
+
+              - ${{ if eq(variables['isMainBranch'], True) }}:
+                  - template: /ado-pipeline/promote/docker-build.yaml
+                    parameters:
+                      dockerFilePath: ${{ parameters.dockerFilePath }}
+                      subscription: $(SubscriptionDEV)
+                      acrName: $(AcrDEV)
+
+                  - template: /ado-pipeline/promote/docker-build.yaml
+                    parameters:
+                      dockerFilePath: ${{ parameters.dockerFilePath }}
+                      subscription: $(SubscriptionPRE)
+                      acrName: $(AcrPRE)
+
+                  - template: /ado-pipeline/promote/docker-build.yaml
+                    parameters:
+                      dockerFilePath: ${{ parameters.dockerFilePath }}
+                      subscription: $(SubscriptionPRD)
+                      acrName: $(AcrPRD)
 
           - job: TestsDockerCompose
             displayName: Tests With Docker Compose
@@ -132,7 +169,7 @@ stages:
               - checkout: self
               - checkout: FcpPipelineCommon
               - template: /ado-pipeline/promote/tests-docker-compose.yaml
-                parameters:   
+                parameters:
                   testDockerComposeFile: ${{ parameters.testDockerComposeFile }}
                   subscription: $(sharedSubscription)
 
@@ -226,7 +263,7 @@ stages:
                           parameters:
                             env: pr
                             subscription: $(subscriptionPreFix)-SND2
-                            acr: $(sharedAcr)
+                            acr: $(AcrSND)
                             isTemporary: true
 
   - ${{ else }}:
@@ -301,5 +338,153 @@ stages:
                           parameters:
                             env: snd
                             subscription: $(subscriptionPreFix)-SND2
-                            acr: $(sharedAcr)
+                            acr: $(AcrSND)
                             isTemporary: false
+          - stage: DeploymentDEV
+            variables:
+              - template: variables.yaml
+              - group: fcp-pipeline-dev1-variables
+            pool:
+              name: 'DEFRA-FFC-DEV1-ubuntu2004'
+              condition: succeeded()
+            dependsOn:
+              - Build
+              - Promote
+              - DeploymentSND
+            displayName: DEV Deployment
+
+            jobs:
+              - job: provisioningDEV
+                displayName: Provisioning DEV
+                condition: succeeded()
+                steps:
+                  - checkout: self
+                  - checkout: FcpPipelineCommon
+                  - template: /ado-pipeline/provision/resources-provisioning.yaml
+                    parameters:
+                      subscription: $(subscriptionPreFix)-DEV1
+                      isTemporary: false
+                  - template: /ado-pipeline/provision/database-check.yaml
+                    parameters:
+                      subscription: $(subscriptionPreFix)-DEV1
+                  - template: /ado-pipeline/provision/database-provisioning.yaml
+                    parameters:
+                      subscription: $(subscriptionPreFix)-DEV1
+                      isTemporary: false
+                      databaseName: $(DbCheck.databaseName)
+                      identityName: $(resourceProvisioning.identityName)
+                  - template: /ado-pipeline/provision/database-migration.yaml
+                    parameters:
+                      subscription: $(subscriptionPreFix)-DEV1
+                      isTemporary: false
+                      databaseName: $(DbCheck.databaseName)
+                  - template: /ado-pipeline/provision/database-privileges.yaml
+                    parameters:
+                      subscription: $(subscriptionPreFix)-DEV1
+                      isTemporary: false
+                      databaseName: $(DbCheck.databaseName)
+                      identityName: $(resourceProvisioning.identityName)
+
+              - deployment: DeployDEV
+                variables:
+                  - name: identityName
+                    value: $[ dependencies.provisioningDEV.outputs['resourceProvisioning.identityName'] ]
+                  - name: identityClientId
+                    value: $[ dependencies.provisioningDEV.outputs['resourceProvisioning.identityClientId'] ]
+                  - name: identityResourceId
+                    value: $[ dependencies.provisioningDEV.outputs['resourceProvisioning.identityResourceId'] ]
+                  - name: databaseName
+                    value: $[ dependencies.provisioningDEV.outputs['DbCheck.databaseName'] ]
+                displayName: Deploy DEV
+                environment: DEV
+                dependsOn: provisioningDEV
+                condition: succeeded()
+                workspace:
+                  clean: all
+                strategy:
+                  runOnce:
+                    deploy:
+                      steps:
+                        - checkout: self
+                        - checkout: FcpPipelineCommon
+                        - template: /ado-pipeline/Deploy/deploy.yaml
+                          parameters:
+                            env: dev
+                            subscription: $(subscriptionPreFix)-DEV1
+                            acr: $(AcrDEV)
+                            isTemporary: false
+          - stage: DeploymentTEST
+            variables:
+              - template: variables.yaml
+              - group: fcp-pipeline-test-variables
+            pool:
+              name: 'DEFRA-FFC-DEV1-ubuntu2004'
+              condition: succeeded()
+            dependsOn:
+              - Build
+              - Promote
+              - DeploymentDEV
+            displayName: TEST Deployment
+
+            jobs:
+              - job: provisioningTEST
+                displayName: Provisioning TEST
+                condition: succeeded()
+                steps:
+                  - checkout: self
+                  - checkout: FcpPipelineCommon
+                  - template: /ado-pipeline/provision/resources-provisioning.yaml
+                    parameters:
+                      subscription: $(subscriptionPreFix)-DEV1
+                      isTemporary: false
+                  - template: /ado-pipeline/provision/database-check.yaml
+                    parameters:
+                      subscription: $(subscriptionPreFix)-DEV1
+                  - template: /ado-pipeline/provision/database-provisioning.yaml
+                    parameters:
+                      subscription: $(subscriptionPreFix)-DEV1
+                      isTemporary: false
+                      databaseName: $(DbCheck.databaseName)
+                      identityName: $(resourceProvisioning.identityName)
+                  - template: /ado-pipeline/provision/database-migration.yaml
+                    parameters:
+                      subscription: $(subscriptionPreFix)-DEV1
+                      isTemporary: false
+                      databaseName: $(DbCheck.databaseName)
+                  - template: /ado-pipeline/provision/database-privileges.yaml
+                    parameters:
+                      subscription: $(subscriptionPreFix)-DEV1
+                      isTemporary: false
+                      databaseName: $(DbCheck.databaseName)
+                      identityName: $(resourceProvisioning.identityName)
+
+              - deployment: DeployTEST
+                variables:
+                  - name: identityName
+                    value: $[ dependencies.provisioningTEST.outputs['resourceProvisioning.identityName'] ]
+                  - name: identityClientId
+                    value: $[ dependencies.provisioningTEST.outputs['resourceProvisioning.identityClientId'] ]
+                  - name: identityResourceId
+                    value: $[ dependencies.provisioningTEST.outputs['resourceProvisioning.identityResourceId'] ]
+                  - name: databaseName
+                    value: $[ dependencies.provisioningTEST.outputs['DbCheck.databaseName'] ]
+                displayName: Deploy TEST
+                environment: TEST
+                dependsOn: provisioningTEST
+                condition: succeeded()
+                workspace:
+                  clean: all
+                strategy:
+                  runOnce:
+                    deploy:
+                      steps:
+                        - checkout: self
+                        - checkout: FcpPipelineCommon
+                        - template: /ado-pipeline/Deploy/deploy.yaml
+                          parameters:
+                            env: test
+                            subscription: $(subscriptionPreFix)-DEV1
+                            acr: $(AcrDEV)
+                            isTemporary: false
+
+

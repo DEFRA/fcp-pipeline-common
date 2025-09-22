@@ -1,3 +1,9 @@
+
+trigger: none
+# schedules:
+#   - cron: "0 0 * * 0" # every Sunday at midnight
+#     displayName: Weekly Sunday Midnight
+
 parameters:
   - name: appName
     type: string

@@ -13,7 +13,7 @@ steps:
     displayName: "Echo Build Parameters"
 
   - task: AzureCLI@2
-    displayName: Docker build and push
+    displayName: Docker build and push to ${{ parameters.acrName }}
     inputs:
       azureSubscription: ${{ parameters.subscription }}
       scriptType: bash
