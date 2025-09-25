@@ -22,7 +22,7 @@ variables:
 
 # Use in bash scripts
 - script: |
-    if [ "$(isPr)" = "True" ]; then
+    if [ "$(isPr)" = "true" ]; then
       DOCKER_TAG="myapp:pr-$(prNumber)"
     else
       DOCKER_TAG="myapp:$(releaseVersion)"

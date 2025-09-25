@@ -1,0 +1,136 @@
+parameters:
+  - name: subscription
+    type: string
+
+steps:
+  # Login to the cluster
+  - task: Kubernetes@1
+    displayName: Login to AKS Cluster
+    inputs:
+      connectionType: 'Azure Resource Manager'
+      azureSubscriptionEndpoint: ${{ parameters.subscription }}
+      azureResourceGroup: $(AKSResourceGroup)
+      kubernetesCluster: $(AKSClusster)
+      useClusterAdmin: true
+      command: login
+
+  - task: AzureCLI@2
+    displayName: Extract temporary deployments
+    name: Extract
+    inputs:
+      azureSubscription: ${{ parameters.subscription }}
+      scriptType: 'bash'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        source ./fcp-pipeline-common/common/shared_functions.sh
+
+        TEMP_SERVICES=$(PRETTY=1 get_services_for_decomission 7)
+
+        echo "##[debug]TEMP_SERVICES: $TEMP_SERVICES"
+
+        echo "$TEMP_SERVICES" | jq -c '.releases[]' | while read -r service; do
+          branch=$(jq -r '.branch' <<< "$service")
+          dbSchema=$(jq -r '.dbSchema // empty' <<< "$service")
+          dbName=$(jq -r '.dbName // empty' <<< "$service")
+          identity=$(jq -r '.identity // empty' <<< "$service")
+          prNo=$(jq -r '.prNo' <<< "$service")
+          repo=$(jq -r '.repo' <<< "$service")
+          namespace=$(jq -r '.namespace' <<< "$service")
+          versionTail=$(jq -r '.versionTail' <<< "$service")
+
+          echo "Processing repo=$repo branch=$branch prNo=$prNo dbSchema=$dbSchema dbName=$dbName identity=$identity namespace=$namespace versionTail=$versionTail"
+
+          small_repo_name=$(readable_hash_id "$repo")
+
+          small_branch_name=$(readable_hash_id "$prNo")
+
+          PREFIX="t-${small_repo_name}-b${small_branch_name}-"
+
+          RESOURCE_GROUP="$(resourceGroup)"
+          SERVICE_BUS_NAMESPACE="$(targetEnvironment)FFCINFSB$(subscriptionSpoke)001"
+
+          QUEUE_LIST=$(az servicebus queue list \
+            --resource-group "$RESOURCE_GROUP" \
+            --namespace-name "$SERVICE_BUS_NAMESPACE" \
+            --query "[?starts_with(name, '$PREFIX')].name" \
+            -o json | jq -r 'join(",")')
+
+          TOPIC_LIST=$(az servicebus topic list \
+            --resource-group "$RESOURCE_GROUP" \
+            --namespace-name "$SERVICE_BUS_NAMESPACE" \
+            --query "[?starts_with(name, '$PREFIX')].name" \
+            -o json | jq -r 'join(",")')
+
+          ################################################### Role Assignment Deletion ################################################### 
+
+          echo "##[debug]Deleting role assignments for queues: $QUEUE_LIST"
+
+          for queue in ${QUEUE_LIST//,/ }; do
+            echo "##[debug]Deleting role assignment for the queue: $queue"
+            delete_sb_role_assignments_by_entity_name "$identity" "$(resourceGroup)" "$queue"
+          done
+
+          echo "##[debug]Deleting role assignments for topics: $TOPIC_LIST"
+
+          for topic in ${TOPIC_LIST//,/ }; do
+            echo "Deleting role assignment for the topic: $topic"
+            delete_sb_role_assignments_by_entity_name "$identity" "$(resourceGroup)" "$topic"
+          done
+
+          ################################################### Queue Deletion ################################################### 
+
+          echo "##[debug]Deleting queues $QUEUE_LIST in $SERVICE_BUS_NAMESPACE"
+          delete_queues "$QUEUE_LIST" "$SERVICE_BUS_NAMESPACE" "$(resourceGroup)"
+
+          ################################################### Topics Deletion ################################################### 
+
+          echo "##[debug]Deleting topics $TOPIC_LIST in $SERVICE_BUS_NAMESPACE"
+          delete_topics "$TOPIC_LIST " "$SERVICE_BUS_NAMESPACE" "$(resourceGroup)"
+
+          ################################################### Federation Deletion ################################################### 
+
+          echo "Checking federations for identity=$identity (RG=$RESOURCE_GROUP) with versionTail=$versionTail"
+
+          federations=$(az identity federated-credential list \
+            --identity-name "$identity" \
+            --resource-group "$RESOURCE_GROUP" \
+            -o json)
+
+          matches=$(jq -r --arg vt "$versionTail" '.[] | select(.name | endswith($vt)) | .name' <<< "$federations")
+
+          echo "##[debug]Deleting federations $matches"
+          delete_federations "$matches" "$identity" "$(resourceGroup)"
+
+          ################################################### Database Deletion ################################################### 
+
+          if [ -n "$dbName" ]; then
+            DB_FULL_NAME=$dbName
+            DATABASE_HOST=$(targetEnvironment)$(sqlflexiServerName).postgres.database.azure.com
+            DATABASE_ADMIN=$(sqlpostgresflexiAADGroupName)
+
+            echo "##[debug]database name: $DB_FULL_NAME"
+
+            # Check if the database is exist!
+            IS_DB_EXIST=$(run_db_command "$DATABASE_ADMIN" "$DATABASE_HOST" "postgres" "\l" | cut -d \| -f 1 | grep "$DB_FULL_NAME")
+
+            if [[ $IS_DB_EXIST ]]; then
+              echo "##[debug]The database $DB_FULL_NAME is exists"
+              SCHEMA_NAME=$dbSchema
+              echo "##[debug]Deleting the Schema: $SCHEMA_NAME in the Database: $DB_FULL_NAME in $DATABASE_HOST"
+
+              deleteCommand="DROP SCHEMA IF EXISTS \"${SCHEMA_NAME}\" CASCADE"
+
+              RESULT=$(run_db_command "$DATABASE_ADMIN" "$DATABASE_HOST" "$DB_FULL_NAME" "$deleteCommand")
+              echo "##[debug]RESULT: $RESULT"
+
+            else
+              echo "##[warning]The database $DB_FULL_NAME is not exists!!!"
+            fi
+          fi
+
+          ################################################### Namespace Deletion ################################################### 
+
+          echo "##[debug]Deleting the namespaces: $namespace"
+          kubectl delete namespace "$namespace"
+
+        done

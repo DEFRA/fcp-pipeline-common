@@ -35,7 +35,7 @@ steps:
         source ./fcp-pipeline-common/common/shared_functions.sh
         SCHEMA_NAME=$(get_schema_name "$(appName)" "${{ parameters.isTemporary }}" "$(prOrBranchNo)")
         DATABASE_HOST=$(targetEnvironment)$(sqlflexiServerName).postgres.database.azure.com
-        dbConfig="postgresService.postgresqlHost=$DATABASE_HOST,postgresService.postgresUser=$(identityName),postgresService.postgresDb=$(databaseName),postgresService.postgresSchema=$SCHEMA_NAME"
+        dbConfig="postgresService.postgresqlHost=$DATABASE_HOST,postgresService.postgresUser=$(identityName),postgresService.postgresDb=$(databaseName),postgresService.postgresSchema=$SCHEMA_NAME,release.dbName=$(databaseName),release.dbSchema=$SCHEMA_NAME"
       else
         echo "##[debug] Service doesn't have a database, skipping dbConfig"
       fi
@@ -46,7 +46,7 @@ steps:
         prConfig=""
       fi
 
-      infoConfig="release.repo=$(appName),release.branch=$(branchName),release.prNo=$(prOrBranchNo)"
+      infoConfig="release.repo=$(appName),release.branch=$(branchName),release.prNo=$(prOrBranchNo),release.identity=$(identityName)"
 
       echo "##vso[task.setvariable variable=configVars]$configVars"
       echo "##vso[task.setvariable variable=prConfig]$prConfig"

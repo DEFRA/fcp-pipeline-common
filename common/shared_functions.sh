@@ -207,3 +207,220 @@ run_db_migration() {
 
   echo "$result"
 }
+
+# Usage:
+#   get_services_for_decomission            # default 7 days
+#   get_services_for_decomission 14         # change age threshold (days)
+#   PRETTY=1 get_services_for_decomission   # pretty-print JSON
+get_services_for_decomission() {
+  DAYS_OLD="${1:-7}"
+  PRETTY="${PRETTY:-0}"
+
+  need() { command -v "$1" >/dev/null 2>&1 || { echo "Missing: $1" >&2; exit 1; }; }
+  need kubectl
+  need helm
+  need jq
+
+  # Helper: derive version tail from namespace
+  get_ns_version_tail() {
+    ns="$1"
+    case "$ns" in
+      *-alpha-*) ver_tail="${ns##*-alpha-}"; printf 'alpha-%s' "$ver_tail" ;;
+      *-beta-*)  ver_tail="${ns##*-beta-}";  printf 'beta-%s'  "$ver_tail" ;;
+      *-beta)    printf 'beta' ;;
+      *)         printf '' ;;
+    esac
+  }
+
+  CUTOFF_EPOCH="$(jq -n --argjson d "$DAYS_OLD" 'now - ($d*24*60*60)')"
+
+  # Namespaces containing -alpha- or -beta
+  NS_LIST="$(kubectl get ns -o json \
+    | jq -r '.items[]
+             | select(.metadata.name | contains("-alpha-") or contains("-beta"))
+             | .metadata.name')"
+
+  [ -n "$NS_LIST" ] || { echo '{ "releases": [] }'; return 0; }
+
+  echo "$NS_LIST" | while IFS= read -r ns; do
+    [ -n "$ns" ] || continue
+
+    # Pull all helm release secrets (v3) in one go
+    sec_json="$(kubectl get secret -n "$ns" \
+      -l 'owner=helm' \
+      --field-selector 'type=helm.sh/release.v1' \
+      -o json 2>/dev/null || printf '{ "items": [] }')"
+
+    # Pick latest revision per release, then most recent release overall
+    best="$(printf '%s' "$sec_json" \
+      | jq -c '
+          .items
+          | map({
+              name: (.metadata.annotations["meta.helm.sh/release-name"] // .metadata.labels.name // ""),
+              ver: ((.metadata.annotations["meta.helm.sh/release-version"] // "0") | tonumber),
+              epoch: (.metadata.creationTimestamp | fromdateiso8601)
+            })
+          | map(select(.name != ""))
+          | (group_by(.name) | map(max_by(.ver)))
+          | (if length==0 then empty else max_by(.epoch) end)
+        ')"
+
+    [ -n "$best" ] || continue
+
+    rel_name="$(printf '%s' "$best" | jq -r '.name')"
+    rel_epoch="$(printf '%s' "$best" | jq -r '.epoch')"
+
+    # Age filter
+    if [ "$(jq -nr --argjson a "$rel_epoch" --argjson c "$CUTOFF_EPOCH" '$a < $c')" != "true" ]; then
+      continue
+    fi
+
+    # Determine version tail string from namespace
+    versionTail="$(get_ns_version_tail "$ns")"
+
+    # Get values (JSON if possible; fallback to YAML->JSON if yq is present)
+    vals_json="$(helm get values "$rel_name" -n "$ns" -o json 2>/dev/null || printf '{}')"
+    if [ "$(printf '%s' "$vals_json" | jq 'has("release")')" != "true" ]; then
+      if command -v yq >/dev/null 2>&1; then
+        vals_json="$(helm get values "$rel_name" -n "$ns" --all -o yaml 2>/dev/null \
+          | yq -o=json 2>/dev/null || printf '{}')"
+      else
+        vals_json="$(helm get values "$rel_name" -n "$ns" --all -o json 2>/dev/null || printf '{}')"
+      fi
+    fi
+
+    # Extract release block, add namespace + versionTail fields.
+    rel_obj="$(printf '%s' "$vals_json" | jq -c \
+      --arg ns "$ns" \
+      --arg versionTail "$versionTail" \
+      '
+      select(has("release")) | .release
+      | {
+          branch:   (.branch   // null),
+          dbSchema: (.dbSchema // null),
+          dbName:   (.dbName   // null),
+          identity: (.identity // null),
+          prNo:     (.prNo     // null),
+          repo:     (.repo     // null)
+        }
+      | . + { namespace: $ns, versionTail: ($versionTail // null) }
+      | select(.branch != null or .prNo != null or .repo != null)
+      ')"
+
+    [ -n "$rel_obj" ] && printf '%s\n' "$rel_obj"
+  done | if [ "$PRETTY" = "1" ]; then jq -s '{releases: .}'; else jq -c -s '{releases: .}'; fi
+}
+
+
+# Resolve principalId of a user-assigned managed identity (by name)
+get_principal_id() {
+  local identity_name="$1"
+  local resource_group="$2" # fall back to SB RG if not provided
+  az identity show --name "$identity_name" --resource-group "$resource_group" --query principalId -o tsv
+}
+
+list_all_role_assignments_for_principal() {
+  local principal_id="$1"
+  az role assignment list \
+    --assignee-object-id "$principal_id" \
+    --all -o json
+}
+
+delete_sb_role_assignments_by_entity_name() {
+  identity_name="$1"   # UAMI name
+  identity_rg="$2"     # RG of the UAMI
+  entity_name="$3"     # queue or topic name
+
+  if [ -z "$identity_name" ] || [ -z "$identity_rg" ] || [ -z "$entity_name" ]; then
+    echo "Usage: delete_sb_role_assignments_by_entity_name <identity_name> <identity_rg> <entity_name>" >&2
+    return 2
+  fi
+
+  if ! command -v jq >/dev/null 2>&1; then
+    echo "Error: jq is required but not installed (try 'brew install jq')." >&2
+    return 2
+  fi
+
+  principal_id="$(get_principal_id "$identity_name" "$identity_rg")"
+  if [ -z "$principal_id" ]; then
+    echo "Could not resolve principalId for identity '$identity_name' in RG '$identity_rg'." >&2
+    return 1
+  fi
+
+  assignments="$(list_all_role_assignments_for_principal "$principal_id")"
+
+  # we need to match scopes that contain "/<entity_name>/" or end with "/<entity_name>"
+  ids="$(printf '%s' "$assignments" | jq -r --arg n "$entity_name" '
+    .[]? 
+    | select(.scope? != null) 
+    | . as $a
+    | ($a.scope | ascii_downcase) as $s
+    | ($n | ascii_downcase) as $ename
+    | select(
+        ($s | test("/" + $ename + "/"))
+        or
+        ($s | test("/" + $ename + "$"))
+      )
+    | .id
+  ')"
+
+  if [ -z "$ids" ]; then
+    echo "No role assignments found for principal $principal_id scoped to '$entity_name'."
+    return 0
+  fi
+
+  echo "Deleting role assignments scoped to '$entity_name':"
+  printf '%s\n' "$ids" | while IFS= read -r id; do
+    [ -z "$id" ] && continue
+    if [ "$DRY_RUN" = "1" ]; then
+      echo "[DRY RUN] az role assignment delete --ids '$id'"
+    else
+      az role assignment delete --ids "$id"
+    fi
+  done
+}
+
+
+delete_federations() {
+  local federation_list="$1"
+  local identity="$2"
+  local resource_group="$3"
+
+  for fed in ${federation_list//,/ }; do
+    echo "Deleting federation: $fed"
+    az identity federated-credential delete \
+      --identity-name "$identity" \
+      --resource-group "$resource_group" \
+      --name "$fed" \
+      --yes
+  done
+
+}
+
+delete_queues() {
+  local queue_list="$1"
+  local namespace="$2"
+  local resource_group="$3"
+
+  for queue in ${queue_list//,/ }; do
+    echo "Deleting queue: $queue"
+    az servicebus queue delete \
+      --resource-group "$resource_group" \
+      --namespace-name "$namespace" \
+      --name "$queue"
+  done
+}
+
+delete_topics() {
+  local topic_list="$1"
+  local namespace="$2"
+  local resource_group="$3"
+
+  for topic in ${topic_list//,/ }; do
+    echo "Deleting topic: $topic"
+    az servicebus topic delete \
+      --resource-group "$resource_group" \
+      --namespace-name "$namespace" \
+      --name "$topic"
+  done
+}

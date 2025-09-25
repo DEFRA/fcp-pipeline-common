@@ -31,7 +31,7 @@ resources:
       name: defra/fcp-pipeline-common
       endpoint: DEFRA-ADP
       type: github
-      ref: refs/heads/pl764
+      # ref: refs/heads/branch-name
 
 variables:
   - group: fcp-pipeline-common-variables
@@ -42,12 +42,27 @@ variables:
     value: ${{ or(eq(parameters.type, 'npm'), eq(parameters.type, 'nuget')) }}
   - name: isMainBranch
     value: ${{ eq(variables['Build.SourceBranch'], 'refs/heads/main') }}
+  # PR runs
+  - ${{ if eq(variables['Build.Reason'], 'PullRequest') }}:
+      - name: branchRef
+        value: $[variables['System.PullRequest.SourceBranch']] # e.g. refs/heads/feature/foo
+      - name: prNumber
+        value: $[variables['System.PullRequest.PullRequestNumber']]
+      - name: isPr
+        value: true
+
+  # Non-PR runs
+  - ${{ if ne(variables['Build.Reason'], 'PullRequest') }}:
+      - name: branchRef
+        value: $[variables['Build.SourceBranch']] # e.g. refs/heads/main
+      - name: prNumber
+        value: ''
+      - name: isPr
+        value: false
+
+  # Derived once from branchRef
   - name: branchName
-    value: $[replace(variables['Build.SourceBranchName'], 'refs/heads/', '')]
-  - name: prNumber
-    value: $[variables['System.PullRequest.PullRequestNumber']]
-  - name: isPr
-    value: ${{ eq(variables['Build.Reason'], 'PullRequest') }}
+    value: $[replace(variables['branchRef'], 'refs/heads/', '')]
 
 stages:
   - stage: Build
@@ -115,20 +130,20 @@ stages:
                   acrName: $(AcrSND)
 
               - ${{ if eq(variables['isMainBranch'], True) }}:
-                - template: /ado-pipeline/promote/build-helm.yaml
-                  parameters:
-                    subscription: $(SubscriptionDEV)
-                    acrName: $(AcrDEV)
+                  - template: /ado-pipeline/promote/build-helm.yaml
+                    parameters:
+                      subscription: $(SubscriptionDEV)
+                      acrName: $(AcrDEV)
 
-                - template: /ado-pipeline/promote/build-helm.yaml
-                  parameters:
-                    subscription: $(SubscriptionPRE)
-                    acrName: $(AcrPRE)
-                    
-                - template: /ado-pipeline/promote/build-helm.yaml
-                  parameters:
-                    subscription: $(SubscriptionPRD)
-                    acrName: $(AcrPRD)
+                  - template: /ado-pipeline/promote/build-helm.yaml
+                    parameters:
+                      subscription: $(SubscriptionPRE)
+                      acrName: $(AcrPRE)
+
+                  - template: /ado-pipeline/promote/build-helm.yaml
+                    parameters:
+                      subscription: $(SubscriptionPRD)
+                      acrName: $(AcrPRD)
 
           - job: DockerBuild
             displayName: 'Docker Build'
@@ -198,7 +213,7 @@ stages:
               - template: variables.yaml
               - group: fcp-pipeline-snd2-variables
             pool:
-              name: 'DEFRA-FFC-SND2-ubuntu2004'
+              name: DEFRA-FFC-SND2-ubuntu2204
               condition: succeeded()
             dependsOn:
               - Build
@@ -273,7 +288,7 @@ stages:
               - template: variables.yaml
               - group: fcp-pipeline-snd2-variables
             pool:
-              name: 'DEFRA-FFC-SND2-ubuntu2004'
+              name: DEFRA-FFC-SND2-ubuntu2204
               condition: succeeded()
             dependsOn:
               - Build
@@ -486,5 +501,3 @@ stages:
                             subscription: $(subscriptionPreFix)-DEV1
                             acr: $(AcrDEV)
                             isTemporary: false
-
-
