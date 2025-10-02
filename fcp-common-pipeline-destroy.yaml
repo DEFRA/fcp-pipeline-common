@@ -1,10 +1,9 @@
-parameters:
-  - name: appName
-    type: string
-  - name: databaseName
-    type: string
-  - name: prOrBranchNo
-    type: string
+schedules:
+  - cron: "0 0 * * 0" # every Sunday at midnight
+    displayName: Weekly Sunday Midnight
+    branches:
+        include:
+        - main
 
 variables:
   - group: fcp-pipeline-common-variables
@@ -17,11 +16,11 @@ resources:
       name: defra/fcp-pipeline-common
       endpoint: DEFRA-ADP
       type: github
-      ref: refs/heads/pl-757
+      # ref: refs/heads/branch-name
 stages:
   - stage: BetaDestroy
     pool:
-      name: "DEFRA-FFC-SND2-ubuntu2004"
+      name: DEFRA-FFC-SND2-ubuntu2204
     displayName: Destroy Beta Deployment Resources
 
     jobs:
@@ -31,10 +30,6 @@ stages:
         steps:
           - checkout: self
           - checkout: FcpPipelineCommon
-          - template: /ado-pipeline/provision/database-destroy.yaml
+          - template: /ado-pipeline/decommission/discovery-and-destroy.yaml
             parameters:
               subscription: $(subscriptionPreFix)-SND2
-              databaseName: ${{ parameters.databaseName }}
-              prOrBranchNo: ${{ parameters.prOrBranchNo }}
-              appName: ${{ parameters.appName }}
-
