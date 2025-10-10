@@ -29,6 +29,42 @@ steps:
           run_db_command "$(sqlpostgresflexiAADGroupName)" "$DATABASE_HOST" "$DB_FULL_NAME" "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"$SCHEMA_NAME\" to \"$DB_USER_NAME\"" 
           run_db_command "$(sqlpostgresflexiAADGroupName)" "$DATABASE_HOST" "$DB_FULL_NAME" "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA \"$SCHEMA_NAME\" to \"$DB_USER_NAME\"" 
           run_db_command "$(sqlpostgresflexiAADGroupName)" "$DATABASE_HOST" "$DB_FULL_NAME" "GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA \"$SCHEMA_NAME\" to \"$DB_USER_NAME\""
+
+          ########################### Grant read only access to the readonly group ########################### 
+          echo "##[debug]Grant read only access to the readonly group"
+          
+          GENERAL_CONFIG_FILE=./fcp-pipeline-common/common/general_config.yaml
+          APP_NAME=$(appName)
+          TEAM=$(echo "$APP_NAME" | cut -d'-' -f1-2 | tr '[:upper:]' '[:lower:]')
+          CURRENT_ENV=$(echo "$(targetEnvironment)" | tr '[:upper:]' '[:lower:]')
+
+          echo "##[debug]Team: $TEAM, Current env: $CURRENT_ENV"
+
+          TEAM_USER=$(yq e ".db_readonly_access.teams[] | select(.team == \"$TEAM\") | .$CURRENT_ENV.user" "$GENERAL_CONFIG_FILE")
+
+          echo "##[debug]Team user: $TEAM_USER"
+
+          if [ -z "$TEAM_USER" ] || [ "$TEAM_USER" = "null" ]; then
+            echo "##[debug]No user found for team '$TEAM' in env '$CURRENT_ENV'" to grant read only access
+          else
+
+            IS_EXIST=$(run_db_command "$(sqlpostgresflexiAADGroupName)" "$DATABASE_HOST" "postgres" "\du" | cut -d \| -f 1 | grep "$TEAM_USER")
+            if [[ $IS_EXIST ]]; then
+              echo "##[debug]The user $TEAM_USER is already exists"
+            else
+              echo "##[debug]The user $TEAM_USER is not exists and will be created"
+              run_db_command "$(sqlpostgresflexiAADGroupName)" "$DATABASE_HOST" "postgres" "select * from pgaadauth_create_principal('$TEAM_USER', false, false)"            
+            fi
+
+            echo "##[debug]The User: $TEAM_USER Grant read only access in env '$CURRENT_ENV'"
+
+            run_db_command "$(sqlpostgresflexiAADGroupName)" "$DATABASE_HOST" "postgres" "GRANT CONNECT ON DATABASE \"$DB_FULL_NAME\" to \"$TEAM_USER\""
+            run_db_command "$(sqlpostgresflexiAADGroupName)" "$DATABASE_HOST" "$DB_FULL_NAME" "GRANT USAGE on SCHEMA  public to \"$TEAM_USER\""
+
+            run_db_command "$(sqlpostgresflexiAADGroupName)" "$DATABASE_HOST" "$DB_FULL_NAME" "GRANT SELECT ON ALL TABLES IN SCHEMA public to \"$TEAM_USER\"" 
+            run_db_command "$(sqlpostgresflexiAADGroupName)" "$DATABASE_HOST" "$DB_FULL_NAME" "GRANT SELECT ON ALL SEQUENCES IN SCHEMA \"$SCHEMA_NAME\" to \"$TEAM_USER\"" 
+          fi
+          
         else
           echo "##[debug]The service doesn't need a database"
         fi
