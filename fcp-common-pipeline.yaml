@@ -14,6 +14,9 @@ parameters:
   - name: testDockerComposeFile
     type: string
     default: docker-compose.test.yaml
+  - name: failOnThreshold
+    type: string
+    default: moderate
 
   - name: prDeployment
     type: boolean
@@ -92,6 +95,7 @@ stages:
           - template: /ado-pipeline/build/build-${{ parameters.appFrameworkType }}.yaml
             parameters:
               npmLegacyPeerDeps: ${{ parameters.npmLegacyPeerDeps }}
+              failOnThreshold: ${{ parameters.failOnThreshold }}
 
   - stage: Promote
     displayName: 'Promote'
@@ -251,7 +255,10 @@ stages:
                       isTemporary: true
                       databaseName: $(DbCheck.databaseName)
                       identityName: $(resourceProvisioning.identityName)
-
+                  - template: /ado-pipeline/provision/keyvault-access.yaml
+                    parameters:
+                      subscription: $(subscriptionPreFix)-SND2
+                      identityName: $(resourceProvisioning.identityName)
               - deployment: TempDeploy
                 variables:
                   - name: identityName
@@ -326,6 +333,10 @@ stages:
                       isTemporary: false
                       databaseName: $(DbCheck.databaseName)
                       identityName: $(resourceProvisioning.identityName)
+                  - template: /ado-pipeline/provision/keyvault-access.yaml
+                    parameters:
+                      subscription: $(subscriptionPreFix)-SND2
+                      identityName: $(resourceProvisioning.identityName)
 
               - deployment: DeploySND
                 variables:
@@ -355,93 +366,98 @@ stages:
                             subscription: $(subscriptionPreFix)-SND2
                             acr: $(AcrSND)
                             isTemporary: false
-          - stage: DeploymentDEV
+
+      - stage: DeploymentDEV
+        variables:
+          - template: variables.yaml
+          - group: fcp-pipeline-dev1-variables
+        pool:
+          name: 'DEFRA-FFC-DEV1-ubuntu2004'
+          condition: succeeded()
+        dependsOn:
+          - Build
+          - Promote
+          - DeploymentSND
+        displayName: DEV Deployment
+
+        jobs:
+          - job: provisioningDEV
+            displayName: Provisioning DEV
+            condition: succeeded()
+            steps:
+              - checkout: self
+              - checkout: FcpPipelineCommon
+              - template: /ado-pipeline/provision/resources-provisioning.yaml
+                parameters:
+                  subscription: $(subscriptionPreFix)-DEV1
+                  isTemporary: false
+              - template: /ado-pipeline/provision/database-check.yaml
+                parameters:
+                  subscription: $(subscriptionPreFix)-DEV1
+              - template: /ado-pipeline/provision/database-provisioning.yaml
+                parameters:
+                  subscription: $(subscriptionPreFix)-DEV1
+                  isTemporary: false
+                  databaseName: $(DbCheck.databaseName)
+                  identityName: $(resourceProvisioning.identityName)
+              - template: /ado-pipeline/provision/database-migration.yaml
+                parameters:
+                  subscription: $(subscriptionPreFix)-DEV1
+                  isTemporary: false
+                  databaseName: $(DbCheck.databaseName)
+              - template: /ado-pipeline/provision/database-privileges.yaml
+                parameters:
+                  subscription: $(subscriptionPreFix)-DEV1
+                  isTemporary: false
+                  databaseName: $(DbCheck.databaseName)
+                  identityName: $(resourceProvisioning.identityName)
+              - template: /ado-pipeline/provision/keyvault-access.yaml
+                parameters:
+                  subscription: $(subscriptionPreFix)-DEV1
+                  identityName: $(resourceProvisioning.identityName)
+
+          - deployment: DeployDEV
             variables:
-              - template: variables.yaml
-              - group: fcp-pipeline-dev1-variables
-            pool:
-              name: 'DEFRA-FFC-DEV1-ubuntu2004'
-              condition: succeeded()
-            dependsOn:
-              - Build
-              - Promote
-              - DeploymentSND
-            displayName: DEV Deployment
+              - name: identityName
+                value: $[ dependencies.provisioningDEV.outputs['resourceProvisioning.identityName'] ]
+              - name: identityClientId
+                value: $[ dependencies.provisioningDEV.outputs['resourceProvisioning.identityClientId'] ]
+              - name: identityResourceId
+                value: $[ dependencies.provisioningDEV.outputs['resourceProvisioning.identityResourceId'] ]
+              - name: databaseName
+                value: $[ dependencies.provisioningDEV.outputs['DbCheck.databaseName'] ]
+            displayName: Deploy DEV
+            environment: DEV
+            dependsOn: provisioningDEV
+            condition: succeeded()
+            workspace:
+              clean: all
+            strategy:
+              runOnce:
+                deploy:
+                  steps:
+                    - checkout: self
+                    - checkout: FcpPipelineCommon
+                    - template: /ado-pipeline/Deploy/deploy.yaml
+                      parameters:
+                        env: dev
+                        subscription: $(subscriptionPreFix)-DEV1
+                        acr: $(AcrDEV)
+                        isTemporary: false
+      - stage: DeploymentTEST
+        variables:
+          - template: variables.yaml
+          - group: fcp-pipeline-test-variables
+        pool:
+          name: 'DEFRA-FFC-DEV1-ubuntu2004'
+          condition: succeeded()
+        dependsOn:
+          - Build
+          - Promote
+          - DeploymentDEV
+        displayName: TEST Deployment
 
-            jobs:
-              - job: provisioningDEV
-                displayName: Provisioning DEV
-                condition: succeeded()
-                steps:
-                  - checkout: self
-                  - checkout: FcpPipelineCommon
-                  - template: /ado-pipeline/provision/resources-provisioning.yaml
-                    parameters:
-                      subscription: $(subscriptionPreFix)-DEV1
-                      isTemporary: false
-                  - template: /ado-pipeline/provision/database-check.yaml
-                    parameters:
-                      subscription: $(subscriptionPreFix)-DEV1
-                  - template: /ado-pipeline/provision/database-provisioning.yaml
-                    parameters:
-                      subscription: $(subscriptionPreFix)-DEV1
-                      isTemporary: false
-                      databaseName: $(DbCheck.databaseName)
-                      identityName: $(resourceProvisioning.identityName)
-                  - template: /ado-pipeline/provision/database-migration.yaml
-                    parameters:
-                      subscription: $(subscriptionPreFix)-DEV1
-                      isTemporary: false
-                      databaseName: $(DbCheck.databaseName)
-                  - template: /ado-pipeline/provision/database-privileges.yaml
-                    parameters:
-                      subscription: $(subscriptionPreFix)-DEV1
-                      isTemporary: false
-                      databaseName: $(DbCheck.databaseName)
-                      identityName: $(resourceProvisioning.identityName)
-
-              - deployment: DeployDEV
-                variables:
-                  - name: identityName
-                    value: $[ dependencies.provisioningDEV.outputs['resourceProvisioning.identityName'] ]
-                  - name: identityClientId
-                    value: $[ dependencies.provisioningDEV.outputs['resourceProvisioning.identityClientId'] ]
-                  - name: identityResourceId
-                    value: $[ dependencies.provisioningDEV.outputs['resourceProvisioning.identityResourceId'] ]
-                  - name: databaseName
-                    value: $[ dependencies.provisioningDEV.outputs['DbCheck.databaseName'] ]
-                displayName: Deploy DEV
-                environment: DEV
-                dependsOn: provisioningDEV
-                condition: succeeded()
-                workspace:
-                  clean: all
-                strategy:
-                  runOnce:
-                    deploy:
-                      steps:
-                        - checkout: self
-                        - checkout: FcpPipelineCommon
-                        - template: /ado-pipeline/Deploy/deploy.yaml
-                          parameters:
-                            env: dev
-                            subscription: $(subscriptionPreFix)-DEV1
-                            acr: $(AcrDEV)
-                            isTemporary: false
-          - stage: DeploymentTEST
-            variables:
-              - template: variables.yaml
-              - group: fcp-pipeline-test-variables
-            pool:
-              name: 'DEFRA-FFC-DEV1-ubuntu2004'
-              condition: succeeded()
-            dependsOn:
-              - Build
-              - Promote
-              - DeploymentDEV
-            displayName: TEST Deployment
-
-            jobs:
+        jobs:
               - job: provisioningTEST
                 displayName: Provisioning TEST
                 condition: succeeded()

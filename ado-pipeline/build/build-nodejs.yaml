@@ -15,7 +15,7 @@ parameters:
 steps:
   - ${{ if ne(parameters.frameworkVersion, '') }}:
       - task: NodeTool@0
-        displayName: Use Node ${{ parameters.frameworkVersion }} 
+        displayName: Use Node ${{ parameters.frameworkVersion }}
         inputs:
           versionSpec: ${{ parameters.frameworkVersion }}
           checkLatest: true
@@ -41,7 +41,7 @@ steps:
       command: custom
       workingDir: '$(appName)'
       verbose: false
-      customCommand: 'audit -audit-level=${{ parameters.failOnThreshold }} --omit=dev'
+      customCommand: 'audit --audit-level=${{ parameters.failOnThreshold }} --omit=dev'
     continueOnError: ${{ ne(variables['Build.Reason'], 'PullRequest') }}
 
   - task: Npm@1

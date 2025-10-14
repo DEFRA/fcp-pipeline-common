@@ -1,0 +1,42 @@
+parameters:
+  - name: subscription
+    type: string
+  - name: identityName
+    type: string
+steps:
+  - task: AzureCLI@2
+    displayName: KeyVault access
+    condition: succeeded()
+    inputs:
+      azureSubscription: ${{ parameters.subscription }}
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        set -euo pipefail
+
+        KV_GROUP="$(keyvaultReaderGroup)"               # can be display name or objectId
+        IDENTITY_NAME="${{ parameters.identityName }}"
+        RG="$(resourceGroup)"
+
+        echo "##[debug]Resolve principal (service principal) ID of the user-assigned managed identity"
+        PRINCIPAL_ID="$(az identity show \
+          --name "$IDENTITY_NAME" \
+          --resource-group "$RG" \
+          --query 'principalId' -o tsv)"
+
+        if [[ -z "${PRINCIPAL_ID:-}" ]]; then
+          echo "##[error]❌: Could not resolve principalId for identity '$IDENTITY_NAME' in RG '$RG'."
+          exit 1
+        fi
+
+        echo "##[debug]Check membership"
+
+        IS_MEMBER="$(az ad group member check --group "$KV_GROUP" --member-id "$PRINCIPAL_ID" --query value -o tsv || echo false)"
+
+        if [[ "$IS_MEMBER" == "true" ]]; then
+          echo "##[debug]Identity already in group. Nothing to do."
+        else
+          echo "##[debug]Adding identity ($IDENTITY_NAME) to group ($KV_GROUP)…"
+          az ad group member add --group "$KV_GROUP" --member-id "$PRINCIPAL_ID"
+          echo "##[debug]Added."
+        fi
