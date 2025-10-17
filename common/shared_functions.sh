@@ -63,34 +63,57 @@ get_temp_resource_name() {
   echo "t-${small_repo_name}-b${small_branch_name}-${resource_name}"
 }
 
-
-# Convert YAML to key=value, handling 'queue:' substitution
+# convert_config <yaml_file> <appName> <prNumberOrBranchName> <isTemporary>
 convert_config() {
   local yaml_file="$1"
   local appName="$2"
   local prNumberOrBranchName="$3"
   local isTemporary="$4"
-  local output=""
 
-  # Flatten YAML into key=value using yq and jq
-  while IFS='=' read -r key value; do
-    # Handle queue substitution
-    if [[ "$value" == queue:* ]]; then
-      raw_queue="${value#queue:}"
-      value=$(get_temp_resource_name "$appName" "$prNumberOrBranchName" "$raw_queue")
-    fi
+  # Read YAML into memory
+  local modified_yaml
+  modified_yaml="$(<"$yaml_file")"
 
-    # Add PR number suffix if temporary and the key is ingress.endpoint
-    if [[ "$isTemporary" == "True" && "$key" == "ingress.endpoint" ]]; then
-      value="${value}-${prNumberOrBranchName}"
-    fi
+  # If not temporary, just print original YAML content
+  if [[ "$isTemporary" != "True" ]]; then
+    printf '%s\n' "$modified_yaml"
+    return 0
+  fi
 
-    # Append to output
-    output+="${key}=${value},"
-  done < <(yq eval -o=json "$yaml_file" | jq -r 'paths(scalars) as $p | "\($p | join("."))=\(getpath($p))"')
+  # 1) Append "-<PR>" to ingress.endpoint IF it exists
+  if printf '%s' "$modified_yaml" | yq eval -e '.ingress.endpoint' - >/dev/null 2>&1; then
+    modified_yaml="$(
+      printf '%s' "$modified_yaml" \
+      | PR="$prNumberOrBranchName" yq eval '.ingress.endpoint = (.ingress.endpoint + "-" + strenv(PR))' -
+    )"
+  fi
 
-  # Remove trailing comma
-  echo "${output%,}"
+  # 2) Collect all unique scalar strings that start with "queue:"
+  #    (no jq, just yq; -r to unwrap scalars cleanly)
+  local qvals
+  qvals="$(
+    printf '%s' "$modified_yaml" \
+    | yq eval -r '.. | select(tag == "!!str" and test("^queue:"))' - \
+    | sort -u
+  )"
+
+  # 3) For each unique queue:* value, compute replacement via your function and replace globally
+  #    We update *all string scalars equal to that exact original value*
+  local orig raw new_val
+  while IFS= read -r orig; do
+    [[ -n "$orig" ]] || continue
+    raw="${orig#queue:}"
+    new_val="$(get_temp_resource_name "$appName" "$prNumberOrBranchName" "$raw")"
+
+    modified_yaml="$(
+      printf '%s' "$modified_yaml" \
+      | ORIG="$orig" NEW="$new_val" \
+        yq eval '(.. | select(tag == "!!str" and . == strenv(ORIG))) |= strenv(NEW)' -
+    )"
+  done <<< "$qvals"
+
+  # Output the final YAML
+  printf '%s\n' "$modified_yaml"
 }
 
 get_provisioning_object() {
