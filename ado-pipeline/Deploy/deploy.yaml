@@ -28,6 +28,8 @@ steps:
       echo "##[debug]Executing the command: $(appName)/appconfig/${{ parameters.env }}.yaml $(appName) $(prOrBranchNo) ${{ parameters.isTemporary }}"
       configVars=$(convert_config "$(appName)/appconfig/${{ parameters.env }}.yaml" "$(appName)" "$(prOrBranchNo)" "${{ parameters.isTemporary }}")
 
+      printf '%s\n' "$configVars" > "override_value.yaml"
+
       echo "##[debug]ConfigVars: $configVars"
 
       dbConfig=""
@@ -79,12 +81,12 @@ steps:
       chartVersion: $(releaseVersion)
       releaseName: $(appName)
       arguments: '--create-namespace --timeout 120s'
+      valueFile: override_value.yaml
       overrideValues: |
         image=${{ parameters.acr }}.azurecr.io/$(appName):$(releaseVersion)
         azureIdentity.clientID=$(identityClientId)
         azureIdentity.resourceID=$(identityResourceId)
         secretProviderClass.azure.tenantId=$(tenantId)
-        $(configVars)
         $(infoConfig)
         $(prConfig)
         $(dbConfig)
