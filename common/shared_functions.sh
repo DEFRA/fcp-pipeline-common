@@ -447,3 +447,21 @@ delete_topics() {
       --name "$topic"
   done
 }
+
+# Returns success (0) if $1 > $2, else failure (1).
+version_gt() {
+  v1="$1"; v2="$2"
+  awk -v v1="$v1" -v v2="$v2" '
+    BEGIN {
+      na = split(v1, A, /\./)
+      nb = split(v2, B, /\./)
+      n = (na > nb ? na : nb)
+      for (i = 1; i <= n; i++) {
+        ai = (i <= na ? A[i] : 0) + 0
+        bi = (i <= nb ? B[i] : 0) + 0
+        if (ai > bi) exit 0   # v1 > v2
+        if (ai < bi) exit 1   # v1 < v2
+      }
+      exit 1                  # equal -> not greater
+    }' >/dev/null
+}
