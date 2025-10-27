@@ -76,6 +76,7 @@ stages:
 
         steps:
           - checkout: self
+            fetchDepth: 0
           - checkout: FcpPipelineCommon
 
           - script: |
@@ -191,6 +192,42 @@ stages:
                 parameters:
                   testDockerComposeFile: ${{ parameters.testDockerComposeFile }}
                   subscription: $(sharedSubscription)
+      - ${{ if eq(variables['isMainBranch'], True) }}:
+          - job: Tagging
+            condition: succeeded()
+            displayName: Tagging the Repository
+            steps:
+              - checkout: self
+                fetchDepth: 0
+              - bash: |
+                  set -euo pipefail
+
+                  APP_VERSION=$(releaseVersion)
+                  echo "##[debug]Tagging the repository with version $APP_VERSION"
+
+                  echo "##[debug]Setting the git origin url with PAT for tagging"
+                  GITHUB_PAT=$(ffcplatform-github-user-pat)
+
+                  git config --global user.email "ffcplatform@defra.gov.uk"
+                  git config --global user.name "ffcplatform"
+                  
+                  git remote set-url origin "https://x-access-token:$GITHUB_PAT@github.com/DEFRA/$(appName).git"
+
+                  echo "##[debug]Fetching tags from origin"
+                  git fetch --tags origin
+
+                  # Check if the tag already exists on REMOTE (more accurate than local-only)
+                  if git ls-remote --tags origin "refs/tags/$APP_VERSION" | grep -q .; then
+                    echo "Tag $APP_VERSION already exists on origin. Skipping."
+                    exit 0
+                  fi
+
+                  git checkout main
+                  git pull --ff-only origin main
+
+                  git tag $APP_VERSION
+                  git push origin refs/tags/$APP_VERSION --force
+                displayName: 'Tag Repository'
 
   - ${{ if eq(variables['isPackage'], true) }}:
       - stage: PackageDeployment
@@ -458,62 +495,62 @@ stages:
         displayName: TEST Deployment
 
         jobs:
-              - job: provisioningTEST
-                displayName: Provisioning TEST
-                condition: succeeded()
-                steps:
-                  - checkout: self
-                  - checkout: FcpPipelineCommon
-                  - template: /ado-pipeline/provision/resources-provisioning.yaml
-                    parameters:
-                      subscription: $(subscriptionPreFix)-DEV1
-                      isTemporary: false
-                  - template: /ado-pipeline/provision/database-check.yaml
-                    parameters:
-                      subscription: $(subscriptionPreFix)-DEV1
-                  - template: /ado-pipeline/provision/database-provisioning.yaml
-                    parameters:
-                      subscription: $(subscriptionPreFix)-DEV1
-                      isTemporary: false
-                      databaseName: $(DbCheck.databaseName)
-                      identityName: $(resourceProvisioning.identityName)
-                  - template: /ado-pipeline/provision/database-migration.yaml
-                    parameters:
-                      subscription: $(subscriptionPreFix)-DEV1
-                      isTemporary: false
-                      databaseName: $(DbCheck.databaseName)
-                  - template: /ado-pipeline/provision/database-privileges.yaml
-                    parameters:
-                      subscription: $(subscriptionPreFix)-DEV1
-                      isTemporary: false
-                      databaseName: $(DbCheck.databaseName)
-                      identityName: $(resourceProvisioning.identityName)
+          - job: provisioningTEST
+            displayName: Provisioning TEST
+            condition: succeeded()
+            steps:
+              - checkout: self
+              - checkout: FcpPipelineCommon
+              - template: /ado-pipeline/provision/resources-provisioning.yaml
+                parameters:
+                  subscription: $(subscriptionPreFix)-DEV1
+                  isTemporary: false
+              - template: /ado-pipeline/provision/database-check.yaml
+                parameters:
+                  subscription: $(subscriptionPreFix)-DEV1
+              - template: /ado-pipeline/provision/database-provisioning.yaml
+                parameters:
+                  subscription: $(subscriptionPreFix)-DEV1
+                  isTemporary: false
+                  databaseName: $(DbCheck.databaseName)
+                  identityName: $(resourceProvisioning.identityName)
+              - template: /ado-pipeline/provision/database-migration.yaml
+                parameters:
+                  subscription: $(subscriptionPreFix)-DEV1
+                  isTemporary: false
+                  databaseName: $(DbCheck.databaseName)
+              - template: /ado-pipeline/provision/database-privileges.yaml
+                parameters:
+                  subscription: $(subscriptionPreFix)-DEV1
+                  isTemporary: false
+                  databaseName: $(DbCheck.databaseName)
+                  identityName: $(resourceProvisioning.identityName)
 
-              - deployment: DeployTEST
-                variables:
-                  - name: identityName
-                    value: $[ dependencies.provisioningTEST.outputs['resourceProvisioning.identityName'] ]
-                  - name: identityClientId
-                    value: $[ dependencies.provisioningTEST.outputs['resourceProvisioning.identityClientId'] ]
-                  - name: identityResourceId
-                    value: $[ dependencies.provisioningTEST.outputs['resourceProvisioning.identityResourceId'] ]
-                  - name: databaseName
-                    value: $[ dependencies.provisioningTEST.outputs['DbCheck.databaseName'] ]
-                displayName: Deploy TEST
-                environment: TEST
-                dependsOn: provisioningTEST
-                condition: succeeded()
-                workspace:
-                  clean: all
-                strategy:
-                  runOnce:
-                    deploy:
-                      steps:
-                        - checkout: self
-                        - checkout: FcpPipelineCommon
-                        - template: /ado-pipeline/Deploy/deploy.yaml
-                          parameters:
-                            env: test
-                            subscription: $(subscriptionPreFix)-DEV1
-                            acr: $(AcrDEV)
-                            isTemporary: false
+          - deployment: DeployTEST
+            variables:
+              - name: identityName
+                value: $[ dependencies.provisioningTEST.outputs['resourceProvisioning.identityName'] ]
+              - name: identityClientId
+                value: $[ dependencies.provisioningTEST.outputs['resourceProvisioning.identityClientId'] ]
+              - name: identityResourceId
+                value: $[ dependencies.provisioningTEST.outputs['resourceProvisioning.identityResourceId'] ]
+              - name: databaseName
+                value: $[ dependencies.provisioningTEST.outputs['DbCheck.databaseName'] ]
+            displayName: Deploy TEST
+            environment: TEST
+            dependsOn: provisioningTEST
+            condition: succeeded()
+            workspace:
+              clean: all
+            strategy:
+              runOnce:
+                deploy:
+                  steps:
+                    - checkout: self
+                    - checkout: FcpPipelineCommon
+                    - template: /ado-pipeline/Deploy/deploy.yaml
+                      parameters:
+                        env: test
+                        subscription: $(subscriptionPreFix)-DEV1
+                        acr: $(AcrDEV)
+                        isTemporary: false
