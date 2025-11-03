@@ -28,7 +28,7 @@ steps:
           echo "##[debug]database name: $DB_FULL_NAME"
 
           # Check if the database is exist!
-          IS_DB_EXIST=$(run_db_command "$(sqlpostgresflexiAADGroupName)" "$DATABASE_HOST" "postgres" "\l" | cut -d \| -f 1 | grep "$DB_FULL_NAME")
+          IS_DB_EXIST=$(run_db_command "$DATABASE_ADMIN" "$DATABASE_HOST" "postgres" "\l" | cut -d \| -f 1 | grep "$DB_FULL_NAME")
 
           if [[ $IS_DB_EXIST ]]; then
             echo "##[debug]The database $DB_FULL_NAME is already exists"
@@ -36,22 +36,22 @@ steps:
             echo "##[debug]The database $DB_FULL_NAME is not exists and will be created"
 
             CREATE_DB_COMMAND="CREATE DATABASE \"$DB_FULL_NAME\""
-            CREATE_DB_RESULT=$(run_db_command "$(sqlpostgresflexiAADGroupName)" "$DATABASE_HOST" "postgres" "$CREATE_DB_COMMAND")
+            CREATE_DB_RESULT=$(run_db_command "$DATABASE_ADMIN" "$DATABASE_HOST" "postgres" "$CREATE_DB_COMMAND")
 
           fi
 
           echo "##[debug]Creating the database user"
-          IS_EXIST=$(run_db_command "$(sqlpostgresflexiAADGroupName)" "$DATABASE_HOST" "postgres" "\du" | cut -d \| -f 1 | grep "$DB_USER_NAME")
+          IS_EXIST=$(run_db_command "$DATABASE_ADMIN" "$DATABASE_HOST" "postgres" "\du" | cut -d \| -f 1 | grep "$DB_USER_NAME")
 
           if [[ $IS_EXIST ]]; then
             echo "##[debug]The user $DB_USER_NAME is already exists"
           else
             echo "##[debug]The user $DB_USER_NAME is not exists and will be created"
-            run_db_command "$(sqlpostgresflexiAADGroupName)" "$DATABASE_HOST" "postgres" "select * from pgaadauth_create_principal('$DB_USER_NAME', false, false)"
+            run_db_command "$DATABASE_ADMIN" "$DATABASE_HOST" "postgres" "select * from pgaadauth_create_principal('$DB_USER_NAME', false, false)"
           fi
 
-          run_db_command "$(sqlpostgresflexiAADGroupName)" "$DATABASE_HOST" "postgres" "GRANT ALL PRIVILEGES ON DATABASE \"$DB_FULL_NAME\" to \"$DB_USER_NAME\"" 
-          run_db_command "$(sqlpostgresflexiAADGroupName)" "$DATABASE_HOST" "postgres" "GRANT CONNECT ON DATABASE \"$DB_FULL_NAME\" to \"$DB_USER_NAME\""
+          run_db_command "$DATABASE_ADMIN" "$DATABASE_HOST" "postgres" "GRANT ALL PRIVILEGES ON DATABASE \"$DB_FULL_NAME\" to \"$DB_USER_NAME\"" 
+          run_db_command "$DATABASE_ADMIN" "$DATABASE_HOST" "postgres" "GRANT CONNECT ON DATABASE \"$DB_FULL_NAME\" to \"$DB_USER_NAME\""
 
           SCHEMA_NAME=$(get_schema_name "$(appName)" "${{ parameters.isTemporary }}" "$(prOrBranchNo)")
 
@@ -62,12 +62,42 @@ steps:
             echo "##[debug]Creating the Schema: $SCHEMA_NAME in the Database: $DB_FULL_NAME in $DATABASE_HOST"
             createCommand="CREATE SCHEMA IF NOT EXISTS \"${SCHEMA_NAME}\""
 
-            RESULT=$(run_db_command "$(sqlpostgresflexiAADGroupName)" "$DATABASE_HOST" "$DB_FULL_NAME" "$createCommand")
+            RESULT=$(run_db_command "$DATABASE_ADMIN" "$DATABASE_HOST" "$DB_FULL_NAME" "$createCommand")
             echo "##[debug]RESULT"
             
           fi
             
-          run_db_command "$(sqlpostgresflexiAADGroupName)" "$DATABASE_HOST" "$DB_FULL_NAME" "GRANT USAGE on SCHEMA  \"$SCHEMA_NAME\" to \"$DB_USER_NAME\""
+          run_db_command "$DATABASE_ADMIN" "$DATABASE_HOST" "$DB_FULL_NAME" "GRANT USAGE on SCHEMA  \"$SCHEMA_NAME\" to \"$DB_USER_NAME\""
+        else
+          echo "##[debug]The service doesn't need a database"
+        fi
+
+  - task: AzureCLI@2
+    displayName: Installing database extentions
+    inputs:
+      azureSubscription: ${{ parameters.subscription }}
+      scriptType: 'bash'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        if [[ "$(hasDatabase)" == "true" ]]; then 
+          echo "##[debug]Installing the database extentions"
+          source ./fcp-pipeline-common/common/shared_functions.sh
+
+          DB_FULL_NAME=${{ parameters.databaseName }}
+          DATABASE_HOST=$(targetEnvironment)$(sqlflexiServerName).postgres.database.azure.com
+          DATABASE_ADMIN=$(sqlpostgresflexiAADGroupName)
+          DB_USER_NAME=${{ parameters.identityName }}
+
+          extensions=$(yq '.resources.postgreSql.extensions.[].name' $(appName)/provision.azure.yaml)
+          for extension in $extensions; do
+            echo Installing $extension
+
+            createCommand="CREATE EXTENSION IF NOT EXISTS \"$extension\""
+
+            RESULT=$(run_db_command "$DATABASE_ADMIN" "$DATABASE_HOST" "$DB_FULL_NAME" "$createCommand")
+            echo "##[debug]RESULT"
+
+          done
         else
           echo "##[debug]The service doesn't need a database"
         fi
