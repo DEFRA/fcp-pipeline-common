@@ -1,0 +1,53 @@
+parameters:
+  - name: sNowConnectionName
+    type: string
+  - name: subscription
+    type: string
+
+steps:
+  # Login to the cluster
+  - task: Kubernetes@1
+    displayName: Login to AKS Cluster
+    inputs:
+      connectionType: 'Azure Resource Manager'
+      azureSubscriptionEndpoint: ${{ parameters.subscription }}
+      azureResourceGroup: $(AKSResourceGroup)
+      kubernetesCluster: $(AKSClusster)
+      useClusterAdmin: true
+      command: login
+
+  - task: AzureCLI@2
+    displayName: Rollback Version
+    name: Extract
+    inputs:
+      azureSubscription: ${{ parameters.subscription }}
+      scriptType: 'bash'
+      scriptLocation: 'inlineScript'
+      inlineScript: |
+        echo "##[debug]Getting current deployed version for rollback"
+
+        version=$(helm get metadata ffc-demo-apply -n ffc-demo-snd2 | yq '.VERSION')
+        echo "##vso[task.setvariable variable=rollbackVersion]$version"
+
+        echo "##[debug]Change request parmeters:"
+        echo "##[debug]short_description: $(appName) v$(releaseVersion) Deployment"
+        echo "##[debug]description: "This change request is for a deployment of the service $(appName). The Helm chart being deployed is $(appName) at version v$(releaseVersion). The branch being deployed is $(Build.SourceBranchName) and the pipeline run version for the deployment is #1.0.$(Build.BuildId). The pipeline was triggered by $(Build.RequestedFor)."
+        echo "##[debug]justification: Change raised automatically via the Azure ADO Pipeline. If deployment falls outside of agreed scope of pre-approved change then a separate change will have been raised and approved for this deployment"
+        echo "##[debug]backout_plan: In the event of a deployment failure, the Helm chart will be rolled back to the previously deployed version v$(rollbackVersion)."
+
+  - task: ServiceNow-DevOps-Server-Change-Acceleration@1
+    displayName: Create change request
+    inputs: 
+      connectedServiceName: ${{ parameters.sNowConnectionName }}
+      changeRequestDetails: |
+        {
+          "autoCloseChange": true,
+          "attributes": {
+            "category": "DevOps",
+            "short_description": "$(appName) v$(releaseVersion) Deployment",
+            "description": "This change request is for a deployment of the service $(appName). The Helm chart being deployed is $(appName) at version v$(releaseVersion). The branch being deployed is $(Build.SourceBranchName) and the pipeline run version for the deployment is #1.0.$(Build.BuildId). The pipeline was triggered by $(Build.RequestedFor).",
+            "justification": "Change raised automatically via the Azure ADO Pipeline. If deployment falls outside of agreed scope of pre-approved change then a separate change will have been raised and approved for this deployment",
+            "backout_plan": "In the event of a deployment failure, the Helm chart will be rolled back to the previously deployed version v$(rollbackVersion).",
+            "requested_by": "3948666ae7012300dd926217c2f6a967"
+          }
+        }
