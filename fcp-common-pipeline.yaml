@@ -309,6 +309,15 @@ stages:
             displayName: Beta Deployment
 
             jobs:
+              - job: Create_ServiceNow_Change_Request_prerequisite
+                displayName: Change Request Prerequisite
+                steps:
+                  - checkout: self
+                  - checkout: FcpPipelineCommon
+                  - template: /ado-pipeline/Deploy/change-request-prerequisite.yaml
+                    parameters:
+                      subscription: $(subscriptionPreFix)-SND2
+
               - job: provisioning
                 displayName: Provisioning
                 condition: succeeded()
@@ -317,31 +326,31 @@ stages:
                   - checkout: FcpPipelineCommon
                   - template: /ado-pipeline/provision/resources-provisioning.yaml
                     parameters:
-                      subscription: $(SubscriptionSND)
+                      subscription: $(subscriptionPreFix)-SND2
                       isTemporary: true
                   - template: /ado-pipeline/provision/database-check.yaml
                     parameters:
-                      subscription: $(SubscriptionSND)
+                      subscription: $(subscriptionPreFix)-SND2
                   - template: /ado-pipeline/provision/database-provisioning.yaml
                     parameters:
-                      subscription: $(SubscriptionSND)
+                      subscription: $(subscriptionPreFix)-SND2
                       isTemporary: true
                       databaseName: $(DbCheck.databaseName)
                       identityName: $(resourceProvisioning.identityName)
                   - template: /ado-pipeline/provision/database-migration.yaml
                     parameters:
-                      subscription: $(SubscriptionSND)
+                      subscription: $(subscriptionPreFix)-SND2
                       isTemporary: true
                       databaseName: $(DbCheck.databaseName)
                   - template: /ado-pipeline/provision/database-privileges.yaml
                     parameters:
-                      subscription: $(SubscriptionSND)
+                      subscription: $(subscriptionPreFix)-SND2
                       isTemporary: true
                       databaseName: $(DbCheck.databaseName)
                       identityName: $(resourceProvisioning.identityName)
                   - template: /ado-pipeline/provision/keyvault-access.yaml
                     parameters:
-                      subscription: $(SubscriptionSND)
+                      subscription: $(subscriptionPreFix)-SND2
                       identityName: $(resourceProvisioning.identityName)
               - deployment: TempDeploy
                 variables:
@@ -368,7 +377,7 @@ stages:
                         - template: /ado-pipeline/Deploy/deploy.yaml
                           parameters:
                             env: pr
-                            subscription: $(SubscriptionSND)
+                            subscription: $(subscriptionPreFix)-SND2
                             acr: $(AcrSND)
                             isTemporary: true
                             helm_params: ${{ parameters.pr_params }}
@@ -388,15 +397,29 @@ stages:
             displayName: SND2 Deployment
 
             jobs:
+              - job: Create_ServiceNow_Change_Request_prerequisite
+                displayName: Change Request Prerequisite
+                steps:
+                  - checkout: self
+                  - checkout: FcpPipelineCommon
+                  - template: /ado-pipeline/Deploy/change-request-prerequisite.yaml
+                    parameters:
+                      subscription: $(subscriptionPreFix)-SND2
+
               - job: Create_ServiceNow_Change_Request
                 displayName: Create ServiceNow Change Request
-                condition: eq(parameters.enableServiceNowChangeCreationSandpit, true)
+                condition: ${{ eq(parameters.enableServiceNowChangeCreationSandpit, true) }}
+                dependsOn: Create_ServiceNow_Change_Request_prerequisite
+                variables:
+                  - name: rollbackVersion
+                    value: $[ dependencies.Create_ServiceNow_Change_Request_prerequisite.outputs['ExtractVersion.rollbackVersion'] ]
                 pool: server
                 steps:
                   - template: /ado-pipeline/Deploy/change-request.yaml
                     parameters:
                       sNowConnectionName: $(ServiceNowConnectionSandpit)
-                      subscription: $(SubscriptionSND)
+                      subscription: $(subscriptionPreFix)-SND2
+                      rollbackVersion: $(rollbackVersion)
               - job: provisioningSND2
                 displayName: Provisioning SND2
                 condition: succeeded()
@@ -405,31 +428,31 @@ stages:
                   - checkout: FcpPipelineCommon
                   - template: /ado-pipeline/provision/resources-provisioning.yaml
                     parameters:
-                      subscription: $(SubscriptionSND)
+                      subscription: $(subscriptionPreFix)-SND2
                       isTemporary: false
                   - template: /ado-pipeline/provision/database-check.yaml
                     parameters:
-                      subscription: $(SubscriptionSND)
+                      subscription: $(subscriptionPreFix)-SND2
                   - template: /ado-pipeline/provision/database-provisioning.yaml
                     parameters:
-                      subscription: $(SubscriptionSND)
+                      subscription: $(subscriptionPreFix)-SND2
                       isTemporary: false
                       databaseName: $(DbCheck.databaseName)
                       identityName: $(resourceProvisioning.identityName)
                   - template: /ado-pipeline/provision/database-migration.yaml
                     parameters:
-                      subscription: $(SubscriptionSND)
+                      subscription: $(subscriptionPreFix)-SND2
                       isTemporary: false
                       databaseName: $(DbCheck.databaseName)
                   - template: /ado-pipeline/provision/database-privileges.yaml
                     parameters:
-                      subscription: $(SubscriptionSND)
+                      subscription: $(subscriptionPreFix)-SND2
                       isTemporary: false
                       databaseName: $(DbCheck.databaseName)
                       identityName: $(resourceProvisioning.identityName)
                   - template: /ado-pipeline/provision/keyvault-access.yaml
                     parameters:
-                      subscription: $(SubscriptionSND)
+                      subscription: $(subscriptionPreFix)-SND2
                       identityName: $(resourceProvisioning.identityName)
 
               - deployment: DeploySND2
@@ -484,31 +507,31 @@ stages:
               - checkout: FcpPipelineCommon
               - template: /ado-pipeline/provision/resources-provisioning.yaml
                 parameters:
-                  subscription: $(SubscriptionDEV)
+                  subscription: $(subscriptionPreFix)-DEV1
                   isTemporary: false
               - template: /ado-pipeline/provision/database-check.yaml
                 parameters:
-                  subscription: $(SubscriptionDEV)
+                  subscription: $(subscriptionPreFix)-DEV1
               - template: /ado-pipeline/provision/database-provisioning.yaml
                 parameters:
-                  subscription: $(SubscriptionDEV)
+                  subscription: $(subscriptionPreFix)-DEV1
                   isTemporary: false
                   databaseName: $(DbCheck.databaseName)
                   identityName: $(resourceProvisioning.identityName)
               - template: /ado-pipeline/provision/database-migration.yaml
                 parameters:
-                  subscription: $(SubscriptionDEV)
+                  subscription: $(subscriptionPreFix)-DEV1
                   isTemporary: false
                   databaseName: $(DbCheck.databaseName)
               - template: /ado-pipeline/provision/database-privileges.yaml
                 parameters:
-                  subscription: $(SubscriptionDEV)
+                  subscription: $(subscriptionPreFix)-DEV1
                   isTemporary: false
                   databaseName: $(DbCheck.databaseName)
                   identityName: $(resourceProvisioning.identityName)
               - template: /ado-pipeline/provision/keyvault-access.yaml
                 parameters:
-                  subscription: $(SubscriptionDEV)
+                  subscription: $(subscriptionPreFix)-DEV1
                   identityName: $(resourceProvisioning.identityName)
 
           - deployment: DeployDEV
@@ -536,7 +559,7 @@ stages:
                     - template: /ado-pipeline/Deploy/deploy.yaml
                       parameters:
                         env: dev
-                        subscription: $(SubscriptionDEV)
+                        subscription: $(subscriptionPreFix)-DEV1
                         acr: $(AcrDEV)
                         isTemporary: false
                         helm_params: ${{ parameters.dev_params }}
@@ -562,25 +585,25 @@ stages:
               - checkout: FcpPipelineCommon
               - template: /ado-pipeline/provision/resources-provisioning.yaml
                 parameters:
-                  subscription: $(SubscriptionDEV)
+                  subscription: $(subscriptionPreFix)-DEV1
                   isTemporary: false
               - template: /ado-pipeline/provision/database-check.yaml
                 parameters:
-                  subscription: $(SubscriptionDEV)
+                  subscription: $(subscriptionPreFix)-DEV1
               - template: /ado-pipeline/provision/database-provisioning.yaml
                 parameters:
-                  subscription: $(SubscriptionDEV)
+                  subscription: $(subscriptionPreFix)-DEV1
                   isTemporary: false
                   databaseName: $(DbCheck.databaseName)
                   identityName: $(resourceProvisioning.identityName)
               - template: /ado-pipeline/provision/database-migration.yaml
                 parameters:
-                  subscription: $(SubscriptionDEV)
+                  subscription: $(subscriptionPreFix)-DEV1
                   isTemporary: false
                   databaseName: $(DbCheck.databaseName)
               - template: /ado-pipeline/provision/database-privileges.yaml
                 parameters:
-                  subscription: $(SubscriptionDEV)
+                  subscription: $(subscriptionPreFix)-DEV1
                   isTemporary: false
                   databaseName: $(DbCheck.databaseName)
                   identityName: $(resourceProvisioning.identityName)
@@ -610,7 +633,7 @@ stages:
                     - template: /ado-pipeline/Deploy/deploy.yaml
                       parameters:
                         env: test
-                        subscription: $(SubscriptionDEV)
+                        subscription: $(subscriptionPreFix)-DEV1
                         acr: $(AcrDEV)
                         isTemporary: false
                         helm_params: ${{ parameters.test_params }}
@@ -708,15 +731,29 @@ stages:
         displayName: PRD Deployment
 
         jobs:
+          - job: Create_ServiceNow_Change_Request_prerequisite
+            displayName: Change Request Prerequisite
+            steps:
+              - checkout: self
+              - checkout: FcpPipelineCommon
+              - template: /ado-pipeline/Deploy/change-request-prerequisite.yaml
+                parameters:
+                  subscription: $(SubscriptionPRD)
+                  
           - job: Create_ServiceNow_Change_Request
             displayName: Create ServiceNow Change Request
-            condition: eq(parameters.enableServiceNowChangeCreation, true)
+            condition: ${{ eq(parameters.enableServiceNowChangeCreation, true) }}
             pool: server
+            dependsOn: Create_ServiceNow_Change_Request_prerequisite
+            variables:
+              - name: rollbackVersion
+                value: $[ dependencies.Create_ServiceNow_Change_Request_prerequisite.outputs['ExtractVersion.rollbackVersion'] ]
             steps:
               - template: /ado-pipeline/Deploy/change-request.yaml
                 parameters:
                   sNowConnectionName: $(ServiceNowConnectionSandpit)
                   subscription: $(SubscriptionPRD)
+                  rollbackVersion: $(rollbackVersion)
 
           - job: provisioningPRD
             displayName: Provisioning PRD
