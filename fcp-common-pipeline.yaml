@@ -131,7 +131,7 @@ stages:
 
               - template: /ado-pipeline/promote/build-helm.yaml
                 parameters:
-                  subscription: $(SubscriptionSND)
+                  subscription: $(SubscriptionSND2)
                   acrName: $(AcrSND)
 
               - ${{ if eq(variables['isMainBranch'], True) }}:
@@ -159,7 +159,7 @@ stages:
               - template: /ado-pipeline/promote/docker-build.yaml
                 parameters:
                   dockerFilePath: ${{ parameters.dockerFilePath }}
-                  subscription: $(SubscriptionSND)
+                  subscription: $(SubscriptionSND2)
                   acrName: $(AcrSND)
 
               - ${{ if eq(variables['isMainBranch'], True) }}:
@@ -327,7 +327,7 @@ stages:
 
   - ${{ else }}:
       - ${{ if eq(parameters.sndDeployment, true) }}:
-          - stage: DeploymentSND
+          - stage: DeploymentSND2
             variables:
               - template: variables.yaml
               - group: fcp-pipeline-snd2-variables
@@ -337,11 +337,11 @@ stages:
             dependsOn:
               - Build
               - Promote
-            displayName: SND Deployment
+            displayName: SND2 Deployment
 
             jobs:
-              - job: provisioningSND
-                displayName: Provisioning SND
+              - job: provisioningSND2
+                displayName: Provisioning SND2
                 condition: succeeded()
                 steps:
                   - checkout: self
@@ -375,19 +375,19 @@ stages:
                       subscription: $(subscriptionPreFix)-SND2
                       identityName: $(resourceProvisioning.identityName)
 
-              - deployment: DeploySND
+              - deployment: DeploySND2
                 variables:
                   - name: identityName
-                    value: $[ dependencies.provisioningSND.outputs['resourceProvisioning.identityName'] ]
+                    value: $[ dependencies.provisioningSND2.outputs['resourceProvisioning.identityName'] ]
                   - name: identityClientId
-                    value: $[ dependencies.provisioningSND.outputs['resourceProvisioning.identityClientId'] ]
+                    value: $[ dependencies.provisioningSND2.outputs['resourceProvisioning.identityClientId'] ]
                   - name: identityResourceId
-                    value: $[ dependencies.provisioningSND.outputs['resourceProvisioning.identityResourceId'] ]
+                    value: $[ dependencies.provisioningSND2.outputs['resourceProvisioning.identityResourceId'] ]
                   - name: databaseName
-                    value: $[ dependencies.provisioningSND.outputs['DbCheck.databaseName'] ]
-                displayName: Deploy SND
+                    value: $[ dependencies.provisioningSND2.outputs['DbCheck.databaseName'] ]
+                displayName: Deploy SND2
                 environment: SND2
-                dependsOn: provisioningSND
+                dependsOn: provisioningSND2
                 condition: succeeded()
                 workspace:
                   clean: all
@@ -399,7 +399,7 @@ stages:
                         - checkout: FcpPipelineCommon
                         - template: /ado-pipeline/Deploy/deploy.yaml
                           parameters:
-                            env: snd
+                            env: snd2
                             subscription: $(subscriptionPreFix)-SND2
                             acr: $(AcrSND)
                             isTemporary: false
@@ -414,7 +414,7 @@ stages:
         dependsOn:
           - Build
           - Promote
-          - DeploymentSND
+          - DeploymentSND2
         displayName: DEV Deployment
 
         jobs:
