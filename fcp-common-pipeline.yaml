@@ -638,7 +638,7 @@ stages:
           - template: variables.yaml
           - group: fcp-pipeline-prd1-variables
         pool:
-          name: 'DEFRA-FFC-PRD1-ubuntu2004'
+          name: 'DEFRA-FFC-PRD1-ubuntu2204'
           condition: succeeded()
         dependsOn:
           - Build
