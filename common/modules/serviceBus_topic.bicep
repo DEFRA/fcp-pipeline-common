@@ -24,6 +24,7 @@ resource topicResource 'Microsoft.ServiceBus/namespaces/topics@2024-01-01' = {
     enablePartitioning: topic.?enablePartitioning ?? false
     supportOrdering: topic.?supportOrdering ?? true
     maxSizeInMegabytes: topic.?maxSizeInMegabytes ?? 5120
+    requiresDuplicateDetection: topic.?requiresDuplicateDetection ?? false
   }
 }
 
