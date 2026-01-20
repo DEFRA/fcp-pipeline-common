@@ -27,7 +27,9 @@ parameters:
   - name: sndDeployment
     type: boolean
     default: true
-
+  - name: variableGroupName
+    type: string
+    default: ''
   - name: pr_params
     type: object
     default: {}
@@ -53,9 +55,11 @@ resources:
       name: defra/fcp-pipeline-common
       endpoint: DEFRA-ADP
       type: github
-      ref: refs/heads/pl-1036
+      # ref: refs/heads/branch-name
 
 variables:
+  - ${{ if ne(parameters.variableGroupName, '') }}:
+      - group: ${{ parameters.variableGroupName }}
   - group: fcp-pipeline-common-variables
   - group: fcp-pipeline-common-secrets
   - name: appName
@@ -106,27 +110,6 @@ stages:
               echo "##[section]Is Pull Request: $(isPr)"
               echo "##[section]Pull Request Number: $(prNumber)"
 
-              PARAMS_JSON='${{ toJson(parameters.snd2_params) }}'
-              helm_args=()
-
-              echo "$PARAMS_JSON" \
-                | jq -r 'to_entries[] | "\(.key)=\(.value)"' \
-                | while IFS='=' read -r key varname; do
-                    # Resolve runtime pipeline variable from environment
-                    val="$(printenv "$varname" || true)"
-
-                    if [ -z "$val" ]; then
-                      echo "WARN: $varname is empty (for Helm key $key)"
-                    fi
-
-                    # Escape commas and backslashes for Helm --set-string (Helm uses commas to separate)
-                    # (If you plan to join into one --set-string with commas, you MUST escape commas)
-                    esc_val="$(printf '%s' "$val" | sed 's/\\/\\\\/g; s/,/\\,/g')"
-
-                    # Add as its own --set-string (simpler + avoids comma-joining issues)
-                    helm_args+=( "--set-string" "${key}=${esc_val}" )
-                  done
-                echo "##[debug]$helm_args
             displayName: 'Build and Workspace Info'
 
           - template: /ado-pipeline/build/helpers/app-version.yaml
