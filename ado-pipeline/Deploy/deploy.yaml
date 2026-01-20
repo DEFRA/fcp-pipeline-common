@@ -8,6 +8,9 @@ parameters:
   - name: isTemporary
     type: boolean
     default: false
+  - name: helm_params
+    type: object
+    default: {}    
 steps:
   - task: KubeloginInstaller@0
     condition: succeeded()
