@@ -27,6 +27,27 @@ parameters:
   - name: sndDeployment
     type: boolean
     default: true
+  - name: variableGroupName
+    type: string
+    default: ''
+  - name: pr_params
+    type: object
+    default: {}
+  - name: snd2_params
+    type: object
+    default: {}
+  - name: dev_params
+    type: object
+    default: {}
+  - name: test_params
+    type: object
+    default: {}
+  - name: pre_params
+    type: object
+    default: {}
+  - name: prd_params
+    type: object
+    default: {}
 
 resources:
   repositories:
@@ -37,6 +58,8 @@ resources:
       # ref: refs/heads/branch-name
 
 variables:
+  - ${{ if ne(parameters.variableGroupName, '') }}:
+      - group: ${{ parameters.variableGroupName }}
   - group: fcp-pipeline-common-variables
   - group: fcp-pipeline-common-secrets
   - name: appName
@@ -324,6 +347,7 @@ stages:
                             subscription: $(subscriptionPreFix)-SND2
                             acr: $(AcrSND)
                             isTemporary: true
+                            helm_params: ${{ parameters.pr_params }}
 
   - ${{ else }}:
       - ${{ if eq(parameters.sndDeployment, true) }}:
@@ -403,6 +427,7 @@ stages:
                             subscription: $(subscriptionPreFix)-SND2
                             acr: $(AcrSND)
                             isTemporary: false
+                            helm_params: ${{ parameters.snd2_params }}
 
       - stage: DeploymentDEV
         variables:
@@ -481,6 +506,7 @@ stages:
                         subscription: $(subscriptionPreFix)-DEV1
                         acr: $(AcrDEV)
                         isTemporary: false
+                        helm_params: ${{ parameters.dev_params }}
       - stage: DeploymentTEST
         variables:
           - template: variables.yaml
@@ -554,6 +580,7 @@ stages:
                         subscription: $(subscriptionPreFix)-DEV1
                         acr: $(AcrDEV)
                         isTemporary: false
+                        helm_params: ${{ parameters.test_params }}
 
       - stage: DeploymentPRE
         variables:
@@ -632,6 +659,7 @@ stages:
                         subscription: $(SubscriptionPRE)
                         acr: $(AcrPRE)
                         isTemporary: false
+                        helm_params: ${{ parameters.pre_params }}
 
       - stage: DeploymentPRD
         variables:
@@ -710,3 +738,4 @@ stages:
                         subscription: $(SubscriptionPRD)
                         acr: $(AcrPRD)
                         isTemporary: false
+                        helm_params: ${{ parameters.prd_params }}
