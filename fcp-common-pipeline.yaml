@@ -317,6 +317,21 @@ stages:
                   - template: /ado-pipeline/Deploy/change-request-prerequisite.yaml
                     parameters:
                       subscription: $(subscriptionPreFix)-SND2
+              - job: Create_ServiceNow_Change_Request
+                displayName: Create ServiceNow Change Request
+                condition: ${{ eq(parameters.enableServiceNowChangeCreationSandpit, true) }}
+                dependsOn: Create_ServiceNow_Change_Request_prerequisite
+                variables:
+                  - name: rollbackVersion
+                    value: $[ dependencies.Create_ServiceNow_Change_Request_prerequisite.outputs['ExtractVersion.rollbackVersion'] ]
+                pool: server
+                steps:
+                  - template: /ado-pipeline/Deploy/change-request.yaml
+                    parameters:
+                      sNowConnectionName: $(ServiceNowConnectionSandpit)
+                      subscription: $(subscriptionPreFix)-SND2
+                      rollbackVersion: $(rollbackVersion)
+                      
 
               - job: provisioning
                 displayName: Provisioning
