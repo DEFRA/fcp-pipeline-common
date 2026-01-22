@@ -9,12 +9,8 @@ steps:
     displayName: Create change request
     inputs:
       connectedServiceName: ${{ parameters.sNowConnectionName }}
-      changeCreationTimeOut: '360'
-      abortOnChangeCreationFailure: true
-      abortOnChangeStepTimeout: true
       changeRequestDetails: |
         {
-          "setCloseCode": true,
           "autoCloseChange": true,
           "attributes": {
             "category": "DevOps",
