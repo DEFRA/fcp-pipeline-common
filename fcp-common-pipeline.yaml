@@ -329,9 +329,7 @@ stages:
                   - template: /ado-pipeline/Deploy/change-request.yaml
                     parameters:
                       sNowConnectionName: $(ServiceNowConnectionSandpit)
-                      subscription: $(subscriptionPreFix)-SND2
                       rollbackVersion: $(rollbackVersion)
-                      
 
               - job: provisioning
                 displayName: Provisioning
@@ -433,7 +431,6 @@ stages:
                   - template: /ado-pipeline/Deploy/change-request.yaml
                     parameters:
                       sNowConnectionName: $(ServiceNowConnectionSandpit)
-                      subscription: $(subscriptionPreFix)-SND2
                       rollbackVersion: $(rollbackVersion)
               - job: provisioningSND2
                 displayName: Provisioning SND2
@@ -754,7 +751,7 @@ stages:
               - template: /ado-pipeline/Deploy/change-request-prerequisite.yaml
                 parameters:
                   subscription: $(SubscriptionPRD)
-                  
+
           - job: Create_ServiceNow_Change_Request
             displayName: Create ServiceNow Change Request
             condition: ${{ eq(parameters.enableServiceNowChangeCreation, true) }}
@@ -767,7 +764,6 @@ stages:
               - template: /ado-pipeline/Deploy/change-request.yaml
                 parameters:
                   sNowConnectionName: $(ServiceNowConnectionSandpit)
-                  subscription: $(SubscriptionPRD)
                   rollbackVersion: $(rollbackVersion)
 
           - job: provisioningPRD
