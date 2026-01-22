@@ -9,11 +9,16 @@ steps:
     displayName: Create change request
     inputs:
       connectedServiceName: ${{ parameters.sNowConnectionName }}
+      changeCreationTimeOut: '360'
+      abortOnChangeCreationFailure: true
+      abortOnChangeStepTimeout: true
       changeRequestDetails: |
         {
+          "setCloseCode": true,
           "autoCloseChange": true,
           "attributes": {
             "category": "DevOps",
+            "type": "standard",
             "short_description": "$(appName) v$(releaseVersion) Deployment",
             "description": "This change request is for a deployment of the service $(appName). The Helm chart being deployed is $(appName) at version v$(releaseVersion). The branch being deployed is $(Build.SourceBranchName) and the pipeline run version for the deployment is #1.0.$(Build.BuildId). The pipeline was triggered by $(Build.RequestedFor).",
             "justification": "Change raised automatically via the Azure ADO Pipeline. If deployment falls outside of agreed scope of pre-approved change then a separate change will have been raised and approved for this deployment",
