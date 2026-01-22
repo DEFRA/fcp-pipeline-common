@@ -309,28 +309,6 @@ stages:
             displayName: Beta Deployment
 
             jobs:
-              - job: Create_ServiceNow_Change_Request_prerequisite
-                displayName: Change Request Prerequisite
-                steps:
-                  - checkout: self
-                  - checkout: FcpPipelineCommon
-                  - template: /ado-pipeline/Deploy/change-request-prerequisite.yaml
-                    parameters:
-                      subscription: $(subscriptionPreFix)-SND2
-              - job: Create_ServiceNow_Change_Request
-                displayName: Create ServiceNow Change Request
-                condition: ${{ eq(parameters.enableServiceNowChangeCreationSandpit, true) }}
-                dependsOn: Create_ServiceNow_Change_Request_prerequisite
-                variables:
-                  - name: rollbackVersion
-                    value: $[ dependencies.Create_ServiceNow_Change_Request_prerequisite.outputs['ExtractVersion.rollbackVersion'] ]
-                pool: server
-                steps:
-                  - template: /ado-pipeline/Deploy/change-request.yaml
-                    parameters:
-                      sNowConnectionName: $(ServiceNowConnectionSandpit)
-                      rollbackVersion: $(rollbackVersion)
-
               - job: provisioning
                 displayName: Provisioning
                 condition: succeeded()
@@ -410,28 +388,6 @@ stages:
             displayName: SND2 Deployment
 
             jobs:
-              - job: Create_ServiceNow_Change_Request_prerequisite
-                displayName: Change Request Prerequisite
-                steps:
-                  - checkout: self
-                  - checkout: FcpPipelineCommon
-                  - template: /ado-pipeline/Deploy/change-request-prerequisite.yaml
-                    parameters:
-                      subscription: $(subscriptionPreFix)-SND2
-
-              - job: Create_ServiceNow_Change_Request
-                displayName: Create ServiceNow Change Request
-                condition: ${{ eq(parameters.enableServiceNowChangeCreationSandpit, true) }}
-                dependsOn: Create_ServiceNow_Change_Request_prerequisite
-                variables:
-                  - name: rollbackVersion
-                    value: $[ dependencies.Create_ServiceNow_Change_Request_prerequisite.outputs['ExtractVersion.rollbackVersion'] ]
-                pool: server
-                steps:
-                  - template: /ado-pipeline/Deploy/change-request.yaml
-                    parameters:
-                      sNowConnectionName: $(ServiceNowConnectionSandpit)
-                      rollbackVersion: $(rollbackVersion)
               - job: provisioningSND2
                 displayName: Provisioning SND2
                 condition: succeeded()
@@ -511,6 +467,28 @@ stages:
         displayName: DEV Deployment
 
         jobs:
+          - job: Create_ServiceNow_Change_Request_prerequisite
+            displayName: Change Request Prerequisite
+            steps:
+              - checkout: self
+              - checkout: FcpPipelineCommon
+              - template: /ado-pipeline/Deploy/change-request-prerequisite.yaml
+                parameters:
+                  subscription: $(subscriptionPreFix)-DEV1
+          - job: Create_ServiceNow_Change_Request
+            displayName: Create ServiceNow Change Request
+            condition: ${{ eq(parameters.enableServiceNowChangeCreationSandpit, true) }}
+            dependsOn: Create_ServiceNow_Change_Request_prerequisite
+            variables:
+              - name: rollbackVersion
+                value: $[ dependencies.Create_ServiceNow_Change_Request_prerequisite.outputs['ExtractVersion.rollbackVersion'] ]
+            pool: server
+            steps:
+              - template: /ado-pipeline/Deploy/change-request.yaml
+                parameters:
+                  sNowConnectionName: $(ServiceNowConnectionSandpit)
+                  rollbackVersion: $(rollbackVersion)
+
           - job: provisioningDEV
             displayName: Provisioning DEV
             condition: succeeded()
