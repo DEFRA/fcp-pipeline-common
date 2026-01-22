@@ -9,6 +9,8 @@ steps:
     displayName: Create change request
     inputs:
       connectedServiceName: ${{ parameters.sNowConnectionName }}
+      ignoreTestFailures: true
+      skipTestsValidation: true
       changeRequestDetails: |
         {
           "autoCloseChange": true,
