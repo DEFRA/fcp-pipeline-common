@@ -7,10 +7,9 @@ parameters:
 steps:
   - task: ServiceNow-DevOps-Server-Change-Acceleration@1
     displayName: Create change request
+    timeoutInMinutes: 10
     inputs:
       connectedServiceName: ${{ parameters.sNowConnectionName }}
-      ignoreTestFailures: true
-      skipTestsValidation: true
       changeRequestDetails: |
         {
           "autoCloseChange": true,
