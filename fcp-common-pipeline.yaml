@@ -480,10 +480,10 @@ stages:
             displayName: Create ServiceNow Change Request
             condition: ${{ eq(parameters.enableServiceNowChangeCreationSandpit, true) }}
             pool: server
-            dependsOn: Create_ServiceNow_Change_Request_prerequisite
-            variables:
-              - name: rollbackVersion
-                value: $[ dependencies.Create_ServiceNow_Change_Request_prerequisite.outputs['ExtractVersion.rollbackVersion'] ]
+            # dependsOn: Create_ServiceNow_Change_Request_prerequisite
+            # variables:
+            #   - name: rollbackVersion
+            #     value: $[ dependencies.Create_ServiceNow_Change_Request_prerequisite.outputs['ExtractVersion.rollbackVersion'] ]
             steps:
               - template: /ado-pipeline/Deploy/change-request.yaml
                 parameters:
