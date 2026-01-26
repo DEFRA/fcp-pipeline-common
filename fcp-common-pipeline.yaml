@@ -745,7 +745,7 @@ stages:
                 parameters:
                   sNowConnectionName: $(ServiceNowConnectionSandpit)
                   rollbackVersion: $(rollbackVersion)
-                  upstreamJob: Create_ServiceNow_Change_Request_prerequisite
+                  # upstreamJob: Create_ServiceNow_Change_Request_prerequisite
 
           - job: provisioningPRD
             displayName: Provisioning PRD
