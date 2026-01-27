@@ -12,6 +12,7 @@ steps:
       connectedServiceName: ${{ parameters.sNowConnectionName }}
       changeRequestDetails: |
         {
+        "autoCloseChange": true,
           "attributes": {
             "category": "DevOps",
             "short_description": "$(appName) v$(releaseVersion) Deployment",
