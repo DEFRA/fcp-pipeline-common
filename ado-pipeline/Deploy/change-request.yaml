@@ -12,7 +12,6 @@ steps:
       connectedServiceName: 'defragroupdev-DEFRA-FFC-ServiceNow DevOps Service Connection'
       changeRequestDetails: |
         {
-          "autoCloseChange": true,
           "attributes": {
             "category": "DevOps",
             "short_description": "$(appName) v$(releaseVersion) Deployment",
