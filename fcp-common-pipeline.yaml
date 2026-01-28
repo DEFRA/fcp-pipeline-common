@@ -136,15 +136,6 @@ stages:
             parameters:
               appFrameworkType: ${{ parameters.appFrameworkType }}
 
-      - job: SonarCloud
-        displayName: SonarCloud Analysis
-        steps:
-          - checkout: self
-          - checkout: FcpPipelineCommon
-          - template: /ado-pipeline/promote/sonar-cloud.yaml
-            parameters:
-              appFrameworkType: ${{ parameters.appFrameworkType }}
-
       - ${{ if ne(variables['isPackage'], true) }}:
           - job: HelmTemplate
             displayName: 'Build Helm Template'
@@ -215,6 +206,27 @@ stages:
                 parameters:
                   testDockerComposeFile: ${{ parameters.testDockerComposeFile }}
                   subscription: $(sharedSubscription)
+
+          - job: SonarCloud
+            displayName: SonarCloud Analysis
+            dependsOn: TestsDockerCompose
+            steps:
+              - checkout: self
+              - checkout: FcpPipelineCommon
+              - template: /ado-pipeline/promote/sonar-cloud.yaml
+                parameters:
+                  appFrameworkType: ${{ parameters.appFrameworkType }}
+
+      - ${{ else }}:
+          - job: SonarCloud
+            displayName: SonarCloud Analysis
+            steps:
+              - checkout: self
+              - checkout: FcpPipelineCommon
+              - template: /ado-pipeline/promote/sonar-cloud.yaml
+                parameters:
+                  appFrameworkType: ${{ parameters.appFrameworkType }}
+
       - ${{ if eq(variables['isMainBranch'], True) }}:
           - job: Tagging
             condition: succeeded()
