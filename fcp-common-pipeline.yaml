@@ -717,7 +717,7 @@ stages:
           condition: succeeded()
         dependsOn:
           - Build
-          - Promote
+          # - Promote
           # - DeploymentPRE
         displayName: PRD Deployment
 
