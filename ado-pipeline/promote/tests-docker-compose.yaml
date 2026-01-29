@@ -39,6 +39,10 @@ steps:
 
     displayName: 'Run tests with Docker Compose'
 
+  - task: PublishCodeCoverageResults@2
+    inputs:
+      summaryFileLocation: '$(appName)/test-output/cobertura-coverage.xml'
+
   - task: PublishPipelineArtifact@1
     displayName: Test - Publish Report
     inputs:
@@ -50,9 +54,9 @@ steps:
   - task: PublishTestResults@2
     inputs:
       testResultsFormat: JUnit
-      testRunTitle: Cocker Compose test
+      testRunTitle: Docker Compose test
       testResultsFiles: $(appName)/test-output/junit.xml
       failTaskOnFailedTests: true
     displayName: 'Docker Compose Test Publish Test Results'
     continueOnError: false
-    condition: succeeded()   
+    condition: succeeded()
