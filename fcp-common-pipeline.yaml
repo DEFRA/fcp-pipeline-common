@@ -722,28 +722,28 @@ stages:
         displayName: PRD Deployment
 
         jobs:
-          - job: Create_ServiceNow_Change_Request_prerequisite
-            displayName: Change Request Prerequisite
-            steps:
-              - checkout: self
-              - checkout: FcpPipelineCommon
-              - template: /ado-pipeline/Deploy/change-request-prerequisite.yaml
-                parameters:
-                  subscription: $(SubscriptionPRD)
+          # - job: Create_ServiceNow_Change_Request_prerequisite
+          #   displayName: Change Request Prerequisite
+          #   steps:
+          #     - checkout: self
+          #     - checkout: FcpPipelineCommon
+          #     - template: /ado-pipeline/Deploy/change-request-prerequisite.yaml
+          #       parameters:
+          #         subscription: $(SubscriptionPRD)
 
           - job: Create_ServiceNow_Change_Request
             displayName: Create ServiceNow Change Request
             condition: ${{ eq(parameters.enableServiceNowChangeCreation, true) }}
             pool: server
-            dependsOn: Create_ServiceNow_Change_Request_prerequisite
-            variables:
-              - name: rollbackVersion
-                value: $[ dependencies.Create_ServiceNow_Change_Request_prerequisite.outputs['ExtractVersion.rollbackVersion'] ]
+            # dependsOn: Create_ServiceNow_Change_Request_prerequisite
+            # variables:
+            #   - name: rollbackVersion
+            #     value: $[ dependencies.Create_ServiceNow_Change_Request_prerequisite.outputs['ExtractVersion.rollbackVersion'] ]
             steps:
               - template: /ado-pipeline/Deploy/change-request.yaml
                 parameters:
                   sNowConnectionName: $(ServiceNowConnection)
-                  rollbackVersion: $(rollbackVersion)
+                  rollbackVersion: "2.3.0"
 
           # - job: provisioningPRD
           #   displayName: Provisioning PRD
