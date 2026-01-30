@@ -450,8 +450,8 @@ stages:
           condition: succeeded()
         dependsOn:
           - Build
-          - Promote
-          - DeploymentSND2
+          # - Promote
+          # - DeploymentSND2
         displayName: DEV Deployment
 
         jobs:
