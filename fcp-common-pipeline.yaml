@@ -749,10 +749,11 @@ stages:
                 parameters:
                   sNowConnectionName: $(ServiceNowConnection)
                   rollbackVersion: $(rollbackVersion)
-                  upstreamJob: DeployPRD
+                  upstreamJob: Create_ServiceNow_Change_Request_prerequisite
 
           - job: provisioningPRD
             displayName: Provisioning PRD
+            dependsOn: Create_ServiceNow_Change_Request
             condition: succeeded()
             steps:
               - checkout: self
@@ -798,7 +799,9 @@ stages:
                 value: $[ dependencies.provisioningPRD.outputs['DbCheck.databaseName'] ]
             displayName: Deploy PRD
             environment: PRD
-            dependsOn: provisioningPRD
+            dependsOn: 
+              - provisioningPRD
+              - Create_ServiceNow_Change_Request
             condition: succeeded()
             workspace:
               clean: all
