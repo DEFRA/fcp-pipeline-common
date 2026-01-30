@@ -1,0 +1,28 @@
+parameters:
+  - name: sNowConnectionName
+    type: string
+  - name: rollbackVersion
+    type: string
+  - name: upstreamJob
+    type: string
+    default: ''
+
+steps:
+  - task: ServiceNow-DevOps-Server-Change-Acceleration@1
+    displayName: Create change request
+    timeoutInMinutes: 20
+    inputs:
+      connectedServiceName: ${{ parameters.sNowConnectionName }}
+      UpstreamJob: ${{ parameters.upstreamJob }}
+      changeRequestDetails: |
+        {
+          "autoCloseChange": true,
+          "attributes": {
+            "category": "DevOps",
+            "short_description": "$(appName) v$(releaseVersion) Deployment",
+            "description": "This change request is for a deployment of the service $(appName). The Helm chart being deployed is $(appName) at version v$(releaseVersion). The branch being deployed is $(Build.SourceBranchName) and the pipeline run version for the deployment is #1.0.$(Build.BuildId). The pipeline was triggered by $(Build.RequestedFor).",
+            "justification": "Change raised automatically via the Azure ADO Pipeline. If deployment falls outside of agreed scope of pre-approved change then a separate change will have been raised and approved for this deployment",
+            "backout_plan": "In the event of a deployment failure, the Helm chart will be rolled back to the previously deployed version v${{ parameters.rollbackVersion }}.",
+            "requested_by": "3948666ae7012300dd926217c2f6a967"
+          }
+        }
