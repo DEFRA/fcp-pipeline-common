@@ -53,7 +53,7 @@ parameters:
     type: boolean
     default: false
 
-  - name: enableServiceNowChangeCreationSandpit
+  - name: enableServiceNowChangeCreationDev
     type: boolean
     default: false
 
@@ -463,7 +463,7 @@ stages:
         dependsOn:
           - Build
           - Promote
-          # - DeploymentSND2
+          - DeploymentSND2
         displayName: DEV Deployment
 
         jobs:
@@ -478,7 +478,7 @@ stages:
 
           - job: Create_ServiceNow_Change_Request
             displayName: Create ServiceNow Change Request
-            condition: ${{ eq(parameters.enableServiceNowChangeCreationSandpit, true) }}
+            condition: ${{ eq(parameters.enableServiceNowChangeCreationDev, true) }}
             pool: server
             dependsOn: Create_ServiceNow_Change_Request_prerequisite
             variables:
@@ -490,70 +490,71 @@ stages:
                   sNowConnectionName: $(ServiceNowConnectionDev)
                   rollbackVersion: $(rollbackVersion)
 
-          # - job: provisioningDEV
-          #   displayName: Provisioning DEV
-          #   condition: succeeded()
-          #   steps:
-          #     - checkout: self
-          #     - checkout: FcpPipelineCommon
-          #     - template: /ado-pipeline/provision/resources-provisioning.yaml
-          #       parameters:
-          #         subscription: $(subscriptionPreFix)-DEV1
-          #         isTemporary: false
-          #     - template: /ado-pipeline/provision/database-check.yaml
-          #       parameters:
-          #         subscription: $(subscriptionPreFix)-DEV1
-          #     - template: /ado-pipeline/provision/database-provisioning.yaml
-          #       parameters:
-          #         subscription: $(subscriptionPreFix)-DEV1
-          #         isTemporary: false
-          #         databaseName: $(DbCheck.databaseName)
-          #         identityName: $(resourceProvisioning.identityName)
-          #     - template: /ado-pipeline/provision/database-migration.yaml
-          #       parameters:
-          #         subscription: $(subscriptionPreFix)-DEV1
-          #         isTemporary: false
-          #         databaseName: $(DbCheck.databaseName)
-          #     - template: /ado-pipeline/provision/database-privileges.yaml
-          #       parameters:
-          #         subscription: $(subscriptionPreFix)-DEV1
-          #         isTemporary: false
-          #         databaseName: $(DbCheck.databaseName)
-          #         identityName: $(resourceProvisioning.identityName)
-          #     - template: /ado-pipeline/provision/keyvault-access.yaml
-          #       parameters:
-          #         subscription: $(subscriptionPreFix)-DEV1
-          #         identityName: $(resourceProvisioning.identityName)
+          - job: provisioningDEV
+            displayName: Provisioning DEV
+            condition: succeeded()
+            steps:
+              - checkout: self
+              - checkout: FcpPipelineCommon
+              - template: /ado-pipeline/provision/resources-provisioning.yaml
+                parameters:
+                  subscription: $(subscriptionPreFix)-DEV1
+                  isTemporary: false
+              - template: /ado-pipeline/provision/database-check.yaml
+                parameters:
+                  subscription: $(subscriptionPreFix)-DEV1
+              - template: /ado-pipeline/provision/database-provisioning.yaml
+                parameters:
+                  subscription: $(subscriptionPreFix)-DEV1
+                  isTemporary: false
+                  databaseName: $(DbCheck.databaseName)
+                  identityName: $(resourceProvisioning.identityName)
+              - template: /ado-pipeline/provision/database-migration.yaml
+                parameters:
+                  subscription: $(subscriptionPreFix)-DEV1
+                  isTemporary: false
+                  databaseName: $(DbCheck.databaseName)
+              - template: /ado-pipeline/provision/database-privileges.yaml
+                parameters:
+                  subscription: $(subscriptionPreFix)-DEV1
+                  isTemporary: false
+                  databaseName: $(DbCheck.databaseName)
+                  identityName: $(resourceProvisioning.identityName)
+              - template: /ado-pipeline/provision/keyvault-access.yaml
+                parameters:
+                  subscription: $(subscriptionPreFix)-DEV1
+                  identityName: $(resourceProvisioning.identityName)
 
-          # - deployment: DeployDEV
-          #   variables:
-          #     - name: identityName
-          #       value: $[ dependencies.provisioningDEV.outputs['resourceProvisioning.identityName'] ]
-          #     - name: identityClientId
-          #       value: $[ dependencies.provisioningDEV.outputs['resourceProvisioning.identityClientId'] ]
-          #     - name: identityResourceId
-          #       value: $[ dependencies.provisioningDEV.outputs['resourceProvisioning.identityResourceId'] ]
-          #     - name: databaseName
-          #       value: $[ dependencies.provisioningDEV.outputs['DbCheck.databaseName'] ]
-          #   displayName: Deploy DEV
-          #   environment: DEV
-          #   dependsOn: provisioningDEV
-          #   condition: succeeded()
-          #   workspace:
-          #     clean: all
-          #   strategy:
-          #     runOnce:
-          #       deploy:
-          #         steps:
-          #           - checkout: self
-          #           - checkout: FcpPipelineCommon
-          #           - template: /ado-pipeline/Deploy/deploy.yaml
-          #             parameters:
-          #               env: dev
-          #               subscription: $(subscriptionPreFix)-DEV1
-          #               acr: $(AcrDEV)
-          #               isTemporary: false
-          #               helm_params: ${{ parameters.dev_params }}
+          - deployment: DeployDEV
+            variables:
+              - name: identityName
+                value: $[ dependencies.provisioningDEV.outputs['resourceProvisioning.identityName'] ]
+              - name: identityClientId
+                value: $[ dependencies.provisioningDEV.outputs['resourceProvisioning.identityClientId'] ]
+              - name: identityResourceId
+                value: $[ dependencies.provisioningDEV.outputs['resourceProvisioning.identityResourceId'] ]
+              - name: databaseName
+                value: $[ dependencies.provisioningDEV.outputs['DbCheck.databaseName'] ]
+            displayName: Deploy DEV
+            environment: DEV
+            dependsOn: provisioningDEV
+            condition: succeeded()
+            workspace:
+              clean: all
+            strategy:
+              runOnce:
+                deploy:
+                  steps:
+                    - checkout: self
+                    - checkout: FcpPipelineCommon
+                    - template: /ado-pipeline/Deploy/deploy.yaml
+                      parameters:
+                        env: dev
+                        subscription: $(subscriptionPreFix)-DEV1
+                        acr: $(AcrDEV)
+                        isTemporary: false
+                        helm_params: ${{ parameters.dev_params }}
+
       - stage: DeploymentTEST
         variables:
           - template: variables.yaml
@@ -718,7 +719,7 @@ stages:
         dependsOn:
           - Build
           - Promote
-          # - DeploymentPRE
+          - DeploymentPRE
         displayName: PRD Deployment
 
         jobs:
@@ -745,67 +746,67 @@ stages:
                   sNowConnectionName: $(ServiceNowConnection)
                   rollbackVersion: $(rollbackVersion)
 
-          # - job: provisioningPRD
-          #   displayName: Provisioning PRD
-          #   condition: succeeded()
-          #   steps:
-          #     - checkout: self
-          #     - checkout: FcpPipelineCommon
-          #     - template: /ado-pipeline/provision/resources-provisioning.yaml
-          #       parameters:
-          #         subscription: $(SubscriptionPRD)
-          #         isTemporary: false
-          #     - template: /ado-pipeline/provision/database-check.yaml
-          #       parameters:
-          #         subscription: $(SubscriptionPRD)
-          #     - template: /ado-pipeline/provision/database-provisioning.yaml
-          #       parameters:
-          #         subscription: $(SubscriptionPRD)
-          #         isTemporary: false
-          #         databaseName: $(DbCheck.databaseName)
-          #         identityName: $(resourceProvisioning.identityName)
-          #     - template: /ado-pipeline/provision/database-migration.yaml
-          #       parameters:
-          #         subscription: $(SubscriptionPRD)
-          #         isTemporary: false
-          #         databaseName: $(DbCheck.databaseName)
-          #     - template: /ado-pipeline/provision/database-privileges.yaml
-          #       parameters:
-          #         subscription: $(SubscriptionPRD)
-          #         isTemporary: false
-          #         databaseName: $(DbCheck.databaseName)
-          #         identityName: $(resourceProvisioning.identityName)
-          #     - template: /ado-pipeline/provision/keyvault-access.yaml
-          #       parameters:
-          #         subscription: $(SubscriptionPRD)
-          #         identityName: $(resourceProvisioning.identityName)
+          - job: provisioningPRD
+            displayName: Provisioning PRD
+            condition: succeeded()
+            steps:
+              - checkout: self
+              - checkout: FcpPipelineCommon
+              - template: /ado-pipeline/provision/resources-provisioning.yaml
+                parameters:
+                  subscription: $(SubscriptionPRD)
+                  isTemporary: false
+              - template: /ado-pipeline/provision/database-check.yaml
+                parameters:
+                  subscription: $(SubscriptionPRD)
+              - template: /ado-pipeline/provision/database-provisioning.yaml
+                parameters:
+                  subscription: $(SubscriptionPRD)
+                  isTemporary: false
+                  databaseName: $(DbCheck.databaseName)
+                  identityName: $(resourceProvisioning.identityName)
+              - template: /ado-pipeline/provision/database-migration.yaml
+                parameters:
+                  subscription: $(SubscriptionPRD)
+                  isTemporary: false
+                  databaseName: $(DbCheck.databaseName)
+              - template: /ado-pipeline/provision/database-privileges.yaml
+                parameters:
+                  subscription: $(SubscriptionPRD)
+                  isTemporary: false
+                  databaseName: $(DbCheck.databaseName)
+                  identityName: $(resourceProvisioning.identityName)
+              - template: /ado-pipeline/provision/keyvault-access.yaml
+                parameters:
+                  subscription: $(SubscriptionPRD)
+                  identityName: $(resourceProvisioning.identityName)
 
-          # - deployment: DeployPRD
-          #   variables:
-          #     - name: identityName
-          #       value: $[ dependencies.provisioningPRD.outputs['resourceProvisioning.identityName'] ]
-          #     - name: identityClientId
-          #       value: $[ dependencies.provisioningPRD.outputs['resourceProvisioning.identityClientId'] ]
-          #     - name: identityResourceId
-          #       value: $[ dependencies.provisioningPRD.outputs['resourceProvisioning.identityResourceId'] ]
-          #     - name: databaseName
-          #       value: $[ dependencies.provisioningPRD.outputs['DbCheck.databaseName'] ]
-          #   displayName: Deploy PRD
-          #   environment: PRD
-          #   dependsOn: provisioningPRD
-          #   condition: succeeded()
-          #   workspace:
-          #     clean: all
-          #   strategy:
-          #     runOnce:
-          #       deploy:
-          #         steps:
-          #           - checkout: self
-          #           - checkout: FcpPipelineCommon
-          #           - template: /ado-pipeline/Deploy/deploy.yaml
-          #             parameters:
-          #               env: prd
-          #               subscription: $(SubscriptionPRD)
-          #               acr: $(AcrPRD)
-          #               isTemporary: false
-          #               helm_params: ${{ parameters.prd_params }}
+          - deployment: DeployPRD
+            variables:
+              - name: identityName
+                value: $[ dependencies.provisioningPRD.outputs['resourceProvisioning.identityName'] ]
+              - name: identityClientId
+                value: $[ dependencies.provisioningPRD.outputs['resourceProvisioning.identityClientId'] ]
+              - name: identityResourceId
+                value: $[ dependencies.provisioningPRD.outputs['resourceProvisioning.identityResourceId'] ]
+              - name: databaseName
+                value: $[ dependencies.provisioningPRD.outputs['DbCheck.databaseName'] ]
+            displayName: Deploy PRD
+            environment: PRD
+            dependsOn: provisioningPRD
+            condition: succeeded()
+            workspace:
+              clean: all
+            strategy:
+              runOnce:
+                deploy:
+                  steps:
+                    - checkout: self
+                    - checkout: FcpPipelineCommon
+                    - template: /ado-pipeline/Deploy/deploy.yaml
+                      parameters:
+                        env: prd
+                        subscription: $(SubscriptionPRD)
+                        acr: $(AcrPRD)
+                        isTemporary: false
+                        helm_params: ${{ parameters.prd_params }}
