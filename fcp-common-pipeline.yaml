@@ -450,7 +450,7 @@ stages:
           condition: succeeded()
         dependsOn:
           - Build
-          # - Promote
+          - Promote
           # - DeploymentSND2
         displayName: DEV Deployment
 
@@ -705,7 +705,7 @@ stages:
           condition: succeeded()
         dependsOn:
           - Build
-          # - Promote
+          - Promote
           # - DeploymentPRE
         displayName: PRD Deployment
 
