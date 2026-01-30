@@ -477,6 +477,7 @@ stages:
                 parameters:
                   sNowConnectionName: $(ServiceNowConnectionDev)
                   rollbackVersion: "2.3.0"
+                  upstreamJob: provisioningDEV
 
           - job: provisioningDEV
             displayName: Provisioning DEV
@@ -733,6 +734,7 @@ stages:
                 parameters:
                   sNowConnectionName: $(ServiceNowConnection)
                   rollbackVersion: $(rollbackVersion)
+                  upstreamJob: provisioningPRD
 
           - job: provisioningPRD
             displayName: Provisioning PRD

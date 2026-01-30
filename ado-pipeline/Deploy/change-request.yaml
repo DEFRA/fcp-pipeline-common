@@ -3,6 +3,9 @@ parameters:
     type: string
   - name: rollbackVersion
     type: string
+  - name: upstreamJob
+    type: string
+    default: ''
 
 steps:
   - task: ServiceNow-DevOps-Server-Change-Acceleration@1
@@ -10,8 +13,10 @@ steps:
     timeoutInMinutes: 10
     inputs:
       connectedServiceName: ${{ parameters.sNowConnectionName }}
+      UpstreamJob: ${{ parameters.upstreamJob }}
       changeRequestDetails: |
         {
+          "autoCloseChange": true,
           "attributes": {
             "category": "DevOps",
             "short_description": "$(appName) v$(releaseVersion) Deployment",
