@@ -10,7 +10,7 @@ parameters:
 steps:
   - task: ServiceNow-DevOps-Server-Change-Acceleration@1
     displayName: Create change request
-    timeoutInMinutes: 10
+    timeoutInMinutes: 20
     inputs:
       connectedServiceName: ${{ parameters.sNowConnectionName }}
       UpstreamJob: ${{ parameters.upstreamJob }}

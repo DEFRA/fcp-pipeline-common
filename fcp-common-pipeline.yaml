@@ -476,8 +476,24 @@ stages:
                 parameters:
                   subscription: $(subscriptionPreFix)-DEV1
 
+          - job: Create_ServiceNow_Change_Request
+            displayName: Create ServiceNow Change Request
+            condition: ${{ eq(parameters.enableServiceNowChangeCreationDev, true) }}
+            pool: server
+            dependsOn: Create_ServiceNow_Change_Request_prerequisite
+            variables:
+              - name: rollbackVersion
+                value: $[ dependencies.Create_ServiceNow_Change_Request_prerequisite.outputs['ExtractVersion.rollbackVersion'] ]
+            steps:
+              - template: /ado-pipeline/Deploy/change-request.yaml
+                parameters:
+                  sNowConnectionName: $(ServiceNowConnectionDev)
+                  rollbackVersion: $(rollbackVersion)
+                  upstreamJob: Create_ServiceNow_Change_Request_prerequisite
+
           - job: provisioningDEV
             displayName: Provisioning DEV
+            dependsOn: Create_ServiceNow_Change_Request
             condition: succeeded()
             steps:
               - checkout: self
@@ -542,21 +558,6 @@ stages:
                         acr: $(AcrDEV)
                         isTemporary: false
                         helm_params: ${{ parameters.dev_params }}
-
-          - job: Create_ServiceNow_Change_Request
-            displayName: Create ServiceNow Change Request
-            condition: ${{ eq(parameters.enableServiceNowChangeCreationDev, true) }}
-            pool: server
-            dependsOn: Create_ServiceNow_Change_Request_prerequisite
-            variables:
-              - name: rollbackVersion
-                value: $[ dependencies.Create_ServiceNow_Change_Request_prerequisite.outputs['ExtractVersion.rollbackVersion'] ]
-            steps:
-              - template: /ado-pipeline/Deploy/change-request.yaml
-                parameters:
-                  sNowConnectionName: $(ServiceNowConnectionDev)
-                  rollbackVersion: $(rollbackVersion)
-                  upstreamJob: DeployDEV
 
       - stage: DeploymentTEST
         variables:
