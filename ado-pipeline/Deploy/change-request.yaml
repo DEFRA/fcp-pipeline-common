@@ -9,7 +9,7 @@ steps:
     displayName: Create change request
     timeoutInMinutes: 10
     inputs:
-      connectedServiceName: 'defragroup-DEFRA-FFC-ServiceNow DevOps Service Connection'
+      connectedServiceName: 'defragroupdev-DEFRA-FFC-ServiceNow DevOps Service Connection'
       changeRequestDetails: |
         {
           "attributes": {
