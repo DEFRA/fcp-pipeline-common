@@ -38,7 +38,11 @@ steps:
 
         echo "##[debug]Executing what-if operation for resources provisioning..."
 
+        DEPLOYMENT_NAME="$(appName)-$(releaseVersion)-$(buildVer)"
+        echo "##[debug]DEPLOYMENT_NAME=$DEPLOYMENT_NAME"
+
         az deployment group what-if \
+          --name $DEPLOYMENT_NAME \
           --resource-group $(resourceGroup) \
           --template-file ./fcp-pipeline-common/common/resources.bicep \
           --parameters targetEnvironment="$(targetEnvironment)" \
@@ -54,6 +58,7 @@ steps:
         echo "##[debug]Executing the 'az deployment group create' ..."
 
         DEPLOYMENT_RESULT=$(az deployment group create \
+          --name $DEPLOYMENT_NAME \
           --resource-group $(resourceGroup) \
           --template-file ./fcp-pipeline-common/common/resources.bicep \
           --parameters targetEnvironment="$(targetEnvironment)" \
