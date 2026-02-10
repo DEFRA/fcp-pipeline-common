@@ -7,6 +7,9 @@ parameters:
   - name: xmlReportPaths
     type: string
     default: test-output/junit.xml
+  - name: downloadArtifact
+    type: boolean
+    default: True
 
 steps:
   - script: |
@@ -18,12 +21,13 @@ steps:
     displayName: Setup SonarCloud Project
     name: SetupSonarCloudProject
 
-  - task: DownloadBuildArtifacts@1
-    inputs:
-      buildType: 'current'
-      downloadType: 'single'
-      artifactName: 'dockercompose-test-results'
-      downloadPath: '$(appName)/test-output'
+  - ${{ if eq(parameters.downloadArtifact, True) }}:
+    - task: DownloadBuildArtifacts@1
+      inputs:
+        buildType: 'current'
+        downloadType: 'single'
+        artifactName: 'dockercompose-test-results'
+        downloadPath: '$(appName)/test-output'
 
   - task: SonarCloudPrepare@3
     displayName: Prepare Sonar analysis
