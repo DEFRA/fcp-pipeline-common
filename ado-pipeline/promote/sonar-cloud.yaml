@@ -23,10 +23,19 @@ steps:
 
   - ${{ if eq(parameters.downloadArtifact, True) }}:
     - task: DownloadBuildArtifacts@1
+      displayName: Download dockercompose-test-results
       inputs:
         buildType: 'current'
         downloadType: 'single'
         artifactName: 'dockercompose-test-results'
+        downloadPath: '$(appName)/test-output'
+  - ${{ else }}:
+    - task: DownloadBuildArtifacts@1
+      displayName: Download unit-test-results
+      inputs:
+        buildType: 'current'
+        downloadType: 'single'
+        artifactName: 'unit-test-results'
         downloadPath: '$(appName)/test-output'
 
   - task: SonarCloudPrepare@3

@@ -32,4 +32,4 @@ stages:
           - checkout: FcpPipelineCommon
           - template: /ado-pipeline/decommission/discovery-and-destroy.yaml
             parameters:
-              subscription: $(subscriptionPreFix)-SND2
+              subscription: $(SubscriptionSND2)

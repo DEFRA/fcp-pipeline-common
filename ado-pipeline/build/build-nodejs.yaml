@@ -72,3 +72,11 @@ steps:
   - task: PublishCodeCoverageResults@2
     inputs:
       summaryFileLocation: '$(appName)/test-output/cobertura-coverage.xml'
+
+  - task: PublishPipelineArtifact@1
+    displayName: Unit Test - Publish Report
+    inputs:
+      targetPath: $(appName)/test-output
+      artifact: unit-test-results
+    continueOnError: false
+    condition: succeeded()
