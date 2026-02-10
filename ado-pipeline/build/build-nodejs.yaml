@@ -73,10 +73,23 @@ steps:
     inputs:
       summaryFileLocation: '$(appName)/test-output/cobertura-coverage.xml'
 
-  - task: PublishPipelineArtifact@1
-    displayName: Unit Test - Publish Report
-    inputs:
-      targetPath: $(appName)/test-output
-      artifact: unit-test-results
-    continueOnError: false
-    condition: succeeded()
+  - bash: |
+      echo "Test if test output folder exist"
+      DIR="$(appName)/test-output"
+
+      if [ -d "$DIR" ]; then
+        echo "Folder exists: $DIR"
+        echo "##vso[task.setvariable variable=hasTestResult]Yes"
+      else
+        echo "Folder does not exist: $DIR"
+        echo "##vso[task.setvariable variable=hasTestResult]No"
+      fi
+    displayName: Checking test output folder
+
+  - ${{ if eq(variables['hasTestResult'], 'Yes') }}:
+    - task: PublishPipelineArtifact@1
+      displayName: Unit Test - Publish Report
+      inputs:
+        targetPath: $(appName)/test-output
+        artifact: unit-test-results
+      continueOnError: false
