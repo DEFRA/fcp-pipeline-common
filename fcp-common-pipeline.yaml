@@ -24,6 +24,9 @@ parameters:
   - name: branchDeployment
     type: boolean
     default: false
+  - name: snd1Deployment
+    type: boolean
+    default: false
   - name: sndDeployment
     type: boolean
     default: true
@@ -67,7 +70,7 @@ resources:
       name: defra/fcp-pipeline-common
       endpoint: DEFRA-ADP
       type: github
-      # ref: refs/heads/branch-name
+      ref: refs/heads/pl-983
 
 variables:
   - ${{ if ne(parameters.variableGroupName, '') }}:
@@ -371,6 +374,84 @@ stages:
                               parameters:
                                 env: pr
                                 subscription: $(SubscriptionSND2)
+                                acr: $(AcrSND)
+                                isTemporary: true
+                                helm_params: ${{ parameters.pr_params }}
+
+          - ${{ if eq(parameters.snd1Deployment, True) }}:
+              - stage: SND1Deployment
+                variables:
+                  - template: variables.yaml
+                  - group: fcp-pipeline-snd1-variables
+                pool:
+                  name: DEFRA-FFC-SND2-ubuntu2204
+                  condition: succeeded()
+                dependsOn:
+                  - Build
+                  - Promote
+                displayName: SND1 Deployment
+
+                jobs:
+                  - job: provisioning
+                    displayName: Provisioning
+                    condition: succeeded()
+                    steps:
+                      - checkout: self
+                      - checkout: FcpPipelineCommon
+                      - template: /ado-pipeline/provision/resources-provisioning.yaml
+                        parameters:
+                          subscription: $(SubscriptionSND1)
+                          isTemporary: true
+                      - template: /ado-pipeline/provision/database-check.yaml
+                        parameters:
+                          subscription: $(SubscriptionSND1)
+                      - template: /ado-pipeline/provision/database-provisioning.yaml
+                        parameters:
+                          subscription: $(SubscriptionSND1)
+                          isTemporary: true
+                          databaseName: $(DbCheck.databaseName)
+                          identityName: $(resourceProvisioning.identityName)
+                      - template: /ado-pipeline/provision/database-migration.yaml
+                        parameters:
+                          subscription: $(SubscriptionSND1)
+                          isTemporary: true
+                          databaseName: $(DbCheck.databaseName)
+                      - template: /ado-pipeline/provision/database-privileges.yaml
+                        parameters:
+                          subscription: $(SubscriptionSND1)
+                          isTemporary: true
+                          databaseName: $(DbCheck.databaseName)
+                          identityName: $(resourceProvisioning.identityName)
+                      - template: /ado-pipeline/provision/keyvault-access.yaml
+                        parameters:
+                          subscription: $(SubscriptionSND1)
+                          identityName: $(resourceProvisioning.identityName)
+                  - deployment: SND1Deploy
+                    variables:
+                      - name: identityName
+                        value: $[ dependencies.provisioning.outputs['resourceProvisioning.identityName'] ]
+                      - name: identityClientId
+                        value: $[ dependencies.provisioning.outputs['resourceProvisioning.identityClientId'] ]
+                      - name: identityResourceId
+                        value: $[ dependencies.provisioning.outputs['resourceProvisioning.identityResourceId'] ]
+                      - name: databaseName
+                        value: $[ dependencies.provisioning.outputs['DbCheck.databaseName'] ]
+                    displayName: Deploy
+                    environment: SND2-TEMP
+                    dependsOn: provisioning
+                    condition: succeeded()
+                    workspace:
+                      clean: all
+                    strategy:
+                      runOnce:
+                        deploy:
+                          steps:
+                            - checkout: self
+                            - checkout: FcpPipelineCommon
+                            - template: /ado-pipeline/Deploy/deploy.yaml
+                              parameters:
+                                env: pr
+                                subscription: $(SubscriptionSND1)
                                 acr: $(AcrSND)
                                 isTemporary: true
                                 helm_params: ${{ parameters.pr_params }}
