@@ -28,7 +28,7 @@ steps:
   - bash: |
       source ./fcp-pipeline-common/common/shared_functions.sh
 
-      echo "##[debug]Executing the command: $(appName)/appconfig/${{ parameters.env }}.yaml $(appName) $(prOrBranchNo) ${{ parameters.isTemporary }}"
+      echo "##[debug]Executing the command: convert_config $(appName)/appconfig/${{ parameters.env }}.yaml $(appName) $(prOrBranchNo) ${{ parameters.isTemporary }}"
       configVars=$(convert_config "$(appName)/appconfig/${{ parameters.env }}.yaml" "$(appName)" "$(prOrBranchNo)" "${{ parameters.isTemporary }}")
 
       printf '%s\n' "$configVars" > "override_value.yaml"

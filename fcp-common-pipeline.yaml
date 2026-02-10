@@ -24,6 +24,9 @@ parameters:
   - name: branchDeployment
     type: boolean
     default: false
+  - name: snd1Deployment
+    type: boolean
+    default: false
   - name: sndDeployment
     type: boolean
     default: true
@@ -31,6 +34,9 @@ parameters:
     type: string
     default: ''
   - name: pr_params
+    type: object
+    default: {}
+  - name: snd1_params
     type: object
     default: {}
   - name: snd2_params
@@ -67,7 +73,7 @@ resources:
       name: defra/fcp-pipeline-common
       endpoint: DEFRA-ADP
       type: github
-      # ref: refs/heads/branch-name
+      ref: refs/heads/pl-983
 
 variables:
   - ${{ if ne(parameters.variableGroupName, '') }}:
@@ -176,6 +182,12 @@ stages:
                       subscription: $(SubscriptionPRD)
                       acrName: $(AcrPRD)
 
+                  - ${{ if eq(parameters.snd1Deployment, True) }}:
+                      - template: /ado-pipeline/promote/build-helm.yaml
+                        parameters:
+                          subscription: $(SubscriptionSND1)
+                          acrName: $(AcrSND1)
+
           - job: DockerBuild
             displayName: 'Docker Build'
             steps:
@@ -206,6 +218,14 @@ stages:
                       dockerFilePath: ${{ parameters.dockerFilePath }}
                       subscription: $(SubscriptionPRD)
                       acrName: $(AcrPRD)
+
+              - ${{ else }}:
+                  - ${{ if eq(parameters.snd1Deployment, True) }}:
+                      - template: /ado-pipeline/promote/docker-build.yaml
+                        parameters:
+                          dockerFilePath: ${{ parameters.dockerFilePath }}
+                          subscription: $(SubscriptionSND1)
+                          acrName: $(AcrSND1)
 
           - job: TestsDockerCompose
             displayName: Tests With Docker Compose
@@ -493,6 +513,84 @@ stages:
                                 acr: $(AcrSND)
                                 isTemporary: false
                                 helm_params: ${{ parameters.snd2_params }}
+
+          - ${{ if eq(parameters.snd1Deployment, True) }}:
+              - stage: SND1Deployment
+                variables:
+                  - template: variables.yaml
+                  - group: fcp-pipeline-snd1-variables
+                pool:
+                  name: DEFRA-FFC-SND2-ubuntu2204
+                  condition: succeeded()
+                dependsOn:
+                  - Build
+                  - Promote
+                displayName: SND1 Deployment
+
+                jobs:
+                  - job: provisioning
+                    displayName: Provisioning
+                    condition: succeeded()
+                    steps:
+                      - checkout: self
+                      - checkout: FcpPipelineCommon
+                      - template: /ado-pipeline/provision/resources-provisioning.yaml
+                        parameters:
+                          subscription: $(SubscriptionSND1)
+                          isTemporary: false
+                      - template: /ado-pipeline/provision/database-check.yaml
+                        parameters:
+                          subscription: $(SubscriptionSND1)
+                      - template: /ado-pipeline/provision/database-provisioning.yaml
+                        parameters:
+                          subscription: $(SubscriptionSND1)
+                          isTemporary: false
+                          databaseName: $(DbCheck.databaseName)
+                          identityName: $(resourceProvisioning.identityName)
+                      - template: /ado-pipeline/provision/database-migration.yaml
+                        parameters:
+                          subscription: $(SubscriptionSND1)
+                          isTemporary: false
+                          databaseName: $(DbCheck.databaseName)
+                      - template: /ado-pipeline/provision/database-privileges.yaml
+                        parameters:
+                          subscription: $(SubscriptionSND1)
+                          isTemporary: false
+                          databaseName: $(DbCheck.databaseName)
+                          identityName: $(resourceProvisioning.identityName)
+                      - template: /ado-pipeline/provision/keyvault-access.yaml
+                        parameters:
+                          subscription: $(SubscriptionSND1)
+                          identityName: $(resourceProvisioning.identityName)
+                  - deployment: SND1Deploy
+                    variables:
+                      - name: identityName
+                        value: $[ dependencies.provisioning.outputs['resourceProvisioning.identityName'] ]
+                      - name: identityClientId
+                        value: $[ dependencies.provisioning.outputs['resourceProvisioning.identityClientId'] ]
+                      - name: identityResourceId
+                        value: $[ dependencies.provisioning.outputs['resourceProvisioning.identityResourceId'] ]
+                      - name: databaseName
+                        value: $[ dependencies.provisioning.outputs['DbCheck.databaseName'] ]
+                    displayName: Deploy
+                    environment: SND1
+                    dependsOn: provisioning
+                    condition: succeeded()
+                    workspace:
+                      clean: all
+                    strategy:
+                      runOnce:
+                        deploy:
+                          steps:
+                            - checkout: self
+                            - checkout: FcpPipelineCommon
+                            - template: /ado-pipeline/Deploy/deploy.yaml
+                              parameters:
+                                env: snd1
+                                subscription: $(SubscriptionSND1)
+                                acr: $(AcrSND1)
+                                isTemporary: false
+                                helm_params: ${{ parameters.snd1_params }}
 
           - stage: DeploymentDEV
             variables:
