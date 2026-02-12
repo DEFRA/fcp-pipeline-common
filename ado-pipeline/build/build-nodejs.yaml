@@ -86,10 +86,10 @@ steps:
       fi
     displayName: Checking test output folder
 
-  - ${{ if eq(variables['hasTestResult'], 'Yes') }}:
-    - task: PublishPipelineArtifact@1
-      displayName: Unit Test - Publish Report
-      inputs:
-        targetPath: $(appName)/test-output
-        artifact: unit-test-results
-      continueOnError: false
+  - task: PublishPipelineArtifact@1
+    displayName: Unit Test - Publish Report
+    inputs:
+      targetPath: $(appName)/test-output
+      artifact: unit-test-results
+    continueOnError: false
+    condition: and(succeeded(), eq(variables['hasTestResult'], 'Yes'))
