@@ -489,7 +489,7 @@ stages:
                 steps:
                   - template: /ado-pipeline/Deploy/change-request.yaml
                     parameters:
-                      sNowConnectionName: $(ServiceNowConnectionDev)
+                      sNowConnectionName: $(ServiceNowConnectionSandpit)
                       rollbackVersion: $(rollbackVersion)
                       upstreamJob: Create_ServiceNow_Change_Request_prerequisite
 
