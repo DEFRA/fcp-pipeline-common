@@ -471,6 +471,7 @@ stages:
             jobs:
               - job: Create_ServiceNow_Change_Request_prerequisite
                 displayName: Change Request Prerequisite
+                condition: ${{ eq(parameters.enableServiceNowChangeCreationDev, true) }}
                 steps:
                   - checkout: self
                   - checkout: FcpPipelineCommon
@@ -496,7 +497,7 @@ stages:
               - job: provisioningDEV
                 displayName: Provisioning DEV
                 dependsOn: Create_ServiceNow_Change_Request
-                condition: succeeded()
+                condition: or( ${{ ne(parameters.enableServiceNowChangeCreationDev, true) }}, succeeded())
                 steps:
                   - checkout: self
                   - checkout: FcpPipelineCommon
@@ -544,7 +545,7 @@ stages:
                 dependsOn:
                   - provisioningDEV
                   - Create_ServiceNow_Change_Request
-                condition: succeeded()
+                condition: or( ${{ ne(parameters.enableServiceNowChangeCreationDev, true) }}, succeeded())
                 workspace:
                   clean: all
                 strategy:
@@ -731,6 +732,7 @@ stages:
             jobs:
               - job: Create_ServiceNow_Change_Request_prerequisite
                 displayName: Change Request Prerequisite
+                condition: ${{ eq(parameters.enableServiceNowChangeCreation, true) }}
                 steps:
                   - checkout: self
                   - checkout: FcpPipelineCommon
@@ -756,7 +758,7 @@ stages:
               - job: provisioningPRD
                 displayName: Provisioning PRD
                 dependsOn: Create_ServiceNow_Change_Request
-                condition: succeeded()
+                condition: or( ${{ ne(parameters.enableServiceNowChangeCreation, true) }}, succeeded())
                 steps:
                   - checkout: self
                   - checkout: FcpPipelineCommon
@@ -804,7 +806,7 @@ stages:
                 dependsOn:
                   - provisioningPRD
                   - Create_ServiceNow_Change_Request
-                condition: succeeded()
+                condition: or( ${{ ne(parameters.enableServiceNowChangeCreation, true) }}, succeeded())
                 workspace:
                   clean: all
                 strategy:
