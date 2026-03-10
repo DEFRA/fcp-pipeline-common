@@ -61,23 +61,21 @@ steps:
       PARAMS_JSON='${{ convertToJson(parameters.helm_params) }}'
       echo "##[debug]helm_params=$PARAMS_JSON"
       
-      overrideConfig=""
-      first=1
+      overrideFile="override_value2.yaml"
+
+      printf -- "---\n" > "$overrideFile"
 
       while IFS='=' read -r key value; do
-        # Escape backslashes and commas INSIDE the value
-        esc_val="$(printf '%s' "$value" | sed 's/\\/\\\\/g; s/,/\\,/g')"
+        # Escape backslashes and quotes inside the value
+        esc_val="$(printf '%s' "$value" | sed 's/\\/\\\\/g; s/"/\\"/g')"
 
-        if [ "$first" -eq 1 ]; then
-          overrideConfig="${key}=${esc_val}"
-          first=0
-        else
-          overrideConfig="${overrideConfig},${key}=${esc_val}"
-        fi
+        # Write key/value to YAML file 
+        printf '%s: "%s"\n' "$key" "$esc_val" >> "$overrideFile"
+        
       done < <(echo "$PARAMS_JSON" | jq -r 'to_entries[] | "\(.key)=\(.value|tostring)"')
 
-      echo "##[debug]overrideConfig: $overrideConfig"
-      echo "##vso[task.setvariable variable=overrideConfig]$overrideConfig"
+      echo "##[debug]Generated Helm override file:"
+      cat "$overrideFile"
 
     displayName: 'prepare configuration'
 
@@ -104,8 +102,11 @@ steps:
       chartName: oci://${{ parameters.acr }}.azurecr.io/helm/$(appName)
       chartVersion: $(releaseVersion)
       releaseName: $(appName)
-      arguments: '--create-namespace --timeout 120s'
-      valueFile: override_value.yaml
+      arguments: >
+        -f override_value.yaml
+        -f override_value2.yaml
+        --create-namespace 
+        --timeout 120s
       overrideValues: |
         image=${{ parameters.acr }}.azurecr.io/$(appName):$(releaseVersion)
         azureIdentity.clientID=$(identityClientId)
@@ -114,4 +115,4 @@ steps:
         $(infoConfig)
         $(prConfig)
         $(dbConfig)
-        $(overrideConfig)
+
