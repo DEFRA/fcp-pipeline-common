@@ -65,14 +65,11 @@ steps:
 
       printf -- "---\n" > "$overrideFile"
 
-      while IFS='=' read -r key value; do
-        # Escape backslashes and quotes inside the value
-        esc_val="$(printf '%s' "$value" | sed 's/\\/\\\\/g; s/"/\\"/g')"
-
-        # Write key/value to YAML file 
-        printf '%s: "%s"\n' "$key" "$esc_val" >> "$overrideFile"
-        
-      done < <(echo "$PARAMS_JSON" | jq -r 'to_entries[] | "\(.key)=\(.value|tostring)"')
+      if [ -n "${PARAMS_JSON:-}" ] && [ "$PARAMS_JSON" != "{}" ]; then
+        echo "$PARAMS_JSON" \
+        | jq 'reduce to_entries[] as $i ({}; setpath($i.key | split("."); $i.value))' \
+        | yq -P >> "$overrideFile"
+      fi
 
       echo "##[debug]Generated Helm override file:"
       cat "$overrideFile"
