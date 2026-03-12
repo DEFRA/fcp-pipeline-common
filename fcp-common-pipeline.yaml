@@ -251,6 +251,9 @@ stages:
                   set -euo pipefail
 
                   APP_VERSION=$(releaseVersion)
+                  REPO_OWNER="DEFRA"
+                  REPO_NAME="$(appName)"      
+                              
                   echo "##[debug]Tagging the repository with version $APP_VERSION"
 
                   echo "##[debug]Setting the git origin url with PAT for tagging"
@@ -259,22 +262,58 @@ stages:
                   git config --global user.email "ffcplatform@defra.gov.uk"
                   git config --global user.name "ffcplatform"
 
-                  git remote set-url origin "https://x-access-token:$GITHUB_PAT@github.com/DEFRA/$(appName).git"
+                  git remote set-url origin "https://x-access-token:$GITHUB_PAT@github.com/${REPO_OWNER}/${REPO_NAME}.git"
 
                   echo "##[debug]Fetching tags from origin"
                   git fetch --tags origin
 
-                  # Check if the tag already exists on REMOTE (more accurate than local-only)
+                  # Check if tag exists on remote
                   if git ls-remote --tags origin "refs/tags/$APP_VERSION" | grep -q .; then
-                    echo "Tag $APP_VERSION already exists on origin. Skipping."
+                    echo "##[debug]Tag $APP_VERSION already exists on origin. Skipping tag creation."
+                  else
+                    git checkout main
+                    git pull --ff-only origin main
+
+                    git tag "$APP_VERSION"
+                    git push origin refs/tags/$APP_VERSION --force
+                  fi
+
+                  echo "##[debug]Checking if GitHub release already exists for tag $APP_VERSION"
+                  release_status=$(
+                    curl -s -o /dev/null -w "%{http_code}" \
+                      -H "Accept: application/vnd.github+json" \
+                      -H "Authorization: Bearer $GITHUB_PAT" \
+                      "https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/tags/${APP_VERSION}"
+                  )
+
+                  if [ "$release_status" = "200" ]; then
+                    echo "##[debug]Release for tag $APP_VERSION already exists. Skipping release creation."
                     exit 0
                   fi
 
-                  git checkout main
-                  git pull --ff-only origin main
+                  if [ "$release_status" != "404" ]; then
+                    echo "##[error]Unexpected response while checking release: HTTP $release_status"
+                    exit 1
+                  fi
 
-                  git tag $APP_VERSION
-                  git push origin refs/tags/$APP_VERSION --force
+                  echo "##[debug]Creating GitHub release for tag $APP_VERSION"
+                  curl -sSfL \
+                    -X POST \
+                    -H "Accept: application/vnd.github+json" \
+                    -H "Authorization: Bearer $GITHUB_PAT" \
+                    "https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases" \
+                    -d @- <<EOF
+                  {
+                    "tag_name": "${APP_VERSION}",
+                    "name": "${APP_VERSION}",
+                    "generate_release_notes": true,
+                    "draft": false,
+                    "prerelease": false
+                  }
+                  EOF
+
+                  echo "##[debug]Release created successfully for tag $APP_VERSION"
+
                 displayName: 'Tag Repository'
 
   - ${{ if eq(variables['isPackage'], true) }}:
