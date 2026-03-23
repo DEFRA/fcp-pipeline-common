@@ -8,9 +8,12 @@ parameters:
   - name: isTemporary
     type: boolean
     default: false
+  - name: autoRollback
+    type: boolean
+    default: false
   - name: helm_params
     type: object
-    default: {}    
+    default: {}
 steps:
   - task: KubeloginInstaller@0
     condition: succeeded()
@@ -86,6 +89,26 @@ steps:
         ACR_TOKEN=$(az acr login --name ${{ parameters.acr }} --expose-token --output tsv --query accessToken)
         helm registry login "${{ parameters.acr }}.azurecr.io" --username 00000000-0000-0000-0000-000000000000 --password $ACR_TOKEN
 
+  - task: AzureCLI@2
+    displayName: 'Pre-flight: check for stuck Helm releases'
+    inputs:
+      azureSubscription: ${{ parameters.subscription }}
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        az aks get-credentials --resource-group $(AKSResourceGroup) --name $(AKSClusster) --overwrite-existing
+
+        RELEASE_STATUS=$(helm status $(appName) -n $(namespace) --output json 2>/dev/null | jq -r '.info.status' 2>/dev/null || echo "not-found")
+        echo "##[debug]Current release status: $RELEASE_STATUS"
+
+        if [[ "$RELEASE_STATUS" == "pending-upgrade" || "$RELEASE_STATUS" == "pending-install" || "$RELEASE_STATUS" == "pending-rollback" ]]; then
+          echo "##[warning]Release $(appName) is stuck in '$RELEASE_STATUS' state. Rolling back to last successful revision..."
+          helm rollback $(appName) 0 -n $(namespace) --timeout 120s
+          echo "Rollback completed. Proceeding with upgrade."
+        else
+          echo "Release status is '$RELEASE_STATUS'. No pre-flight action needed."
+        fi
+
   - task: HelmDeploy@1
     displayName: Deploy Helm Chart
     inputs:
@@ -99,11 +122,20 @@ steps:
       chartName: oci://${{ parameters.acr }}.azurecr.io/helm/$(appName)
       chartVersion: $(releaseVersion)
       releaseName: $(appName)
-      arguments: >
-        -f override_value.yaml
-        -f override_value2.yaml
-        --create-namespace 
-        --timeout 120s
+      ${{ if eq(parameters.autoRollback, true) }}:
+        arguments: >
+          -f override_value.yaml
+          -f override_value2.yaml
+          --create-namespace
+          --atomic
+          --timeout 300s
+      ${{ else }}:
+        arguments: >
+          -f override_value.yaml
+          -f override_value2.yaml
+          --create-namespace
+          --wait
+          --timeout 300s
       overrideValues: |
         image=${{ parameters.acr }}.azurecr.io/$(appName):$(releaseVersion)
         azureIdentity.clientID=$(identityClientId)
