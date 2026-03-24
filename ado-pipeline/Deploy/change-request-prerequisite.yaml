@@ -25,7 +25,7 @@ steps:
         echo "##[debug]Getting current deployed version for rollback"
 
         source ./fcp-pipeline-common/common/shared_functions.sh
-        namespace=$(get_namespace_name "True" "$(appName)" "$(releaseVersion)" "$(altEnvironment)")
+        namespace=$(get_namespace_name "True" "$(appName)" "$(releaseVersion)" "$(environmentDescription)")
 
         version=$(helm get metadata $(appName) -n $namespace | yq '.VERSION')
         echo "##vso[task.setvariable variable=rollbackVersion;isOutput=true]$version"

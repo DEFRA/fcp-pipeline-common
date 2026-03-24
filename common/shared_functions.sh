@@ -17,15 +17,11 @@ get_namespace_name() {
   local isMainBranch="$1"
   local appName="$2"
   local releaseVersion="$3"
-  local altEnvironment="$4"
+  local environmentDescription="$4"
 
   if [[ "$isMainBranch" == "True" ]]; then
         namespace=$(yq e '.namespace' "$appName/helm/$appName/values.yaml")
-        if [[ "$altEnvironment" == "SND" ]];then
-          namespaceFulllName=$(echo "$namespace"-"$altEnvironment"2 | awk '{ print tolower($0) }')
-        else
-          namespaceFulllName=$(echo "$namespace"-"$altEnvironment" | awk '{ print tolower($0) }')
-        fi
+        namespaceFulllName=$(echo "$namespace"-"$environmentDescription" | awk '{ print tolower($0) }')
   else
     namespace=$appName-$releaseVersion
     namespaceFulllName="${namespace//./-}"
