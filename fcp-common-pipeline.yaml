@@ -73,7 +73,7 @@ resources:
       name: defra/fcp-pipeline-common
       endpoint: DEFRA-ADP
       type: github
-      ref: refs/heads/pl-983
+      # ref: refs/heads/branch-name
 
 variables:
   - ${{ if ne(parameters.variableGroupName, '') }}:
@@ -219,7 +219,6 @@ stages:
                       subscription: $(SubscriptionPRD)
                       acrName: $(AcrPRD)
 
-              - ${{ else }}:
                   - ${{ if eq(parameters.snd1Deployment, True) }}:
                       - template: /ado-pipeline/promote/docker-build.yaml
                         parameters:
