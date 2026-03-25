@@ -850,6 +850,7 @@ stages:
                             subscription: $(SubscriptionPRE)
                             acr: $(AcrPRE)
                             isTemporary: false
+                            autoRollback: true
                             helm_params: ${{ parameters.pre_params }}
 
           - stage: DeploymentPRD
@@ -957,4 +958,5 @@ stages:
                             subscription: $(SubscriptionPRD)
                             acr: $(AcrPRD)
                             isTemporary: false
+                            autoRollback: true
                             helm_params: ${{ parameters.prd_params }}
