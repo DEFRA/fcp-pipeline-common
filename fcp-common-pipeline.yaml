@@ -73,7 +73,7 @@ resources:
       name: defra/fcp-pipeline-common
       endpoint: DEFRA-ADP
       type: github
-      # ref: refs/heads/branch-name
+      ref: refs/heads/pre_flight_check
 
 variables:
   - ${{ if ne(parameters.variableGroupName, '') }}:
