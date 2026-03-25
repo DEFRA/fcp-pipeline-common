@@ -20,7 +20,7 @@ steps:
 
   - bash: |
       source ./fcp-pipeline-common/common/shared_functions.sh
-      namespace=$(get_namespace_name "$(isMainBranch)" "$(appName)" "$(releaseVersion)" "$(altEnvironment)")
+      namespace=$(get_namespace_name "$(isMainBranch)" "$(appName)" "$(releaseVersion)" "$(environmentDescription)")
       echo the namespace is $namespace
       echo "##vso[task.setvariable variable=namespace]$namespace"
     displayName: 'Extract namespace'
@@ -28,7 +28,7 @@ steps:
   - bash: |
       source ./fcp-pipeline-common/common/shared_functions.sh
 
-      echo "##[debug]Executing the command: $(appName)/appconfig/${{ parameters.env }}.yaml $(appName) $(prOrBranchNo) ${{ parameters.isTemporary }}"
+      echo "##[debug]Executing the command: convert_config $(appName)/appconfig/${{ parameters.env }}.yaml $(appName) $(prOrBranchNo) ${{ parameters.isTemporary }}"
       configVars=$(convert_config "$(appName)/appconfig/${{ parameters.env }}.yaml" "$(appName)" "$(prOrBranchNo)" "${{ parameters.isTemporary }}")
 
       printf '%s\n' "$configVars" > "override_value.yaml"

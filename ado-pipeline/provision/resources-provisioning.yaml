@@ -20,7 +20,7 @@ steps:
         federation=$(get_federation_name "$(appName)" "$(altEnvironment)" "$(releaseVersion)" "$(isMainBranch)")
         echo "##[debug]The federation name is $federation"
 
-        namespace=$(get_namespace_name "$(isMainBranch)" "$(appName)" "$(releaseVersion)" "$(altEnvironment)")
+        namespace=$(get_namespace_name "$(isMainBranch)" "$(appName)" "$(releaseVersion)" "$(environmentDescription)")
         echo "##[debug]The namespace is $namespace"
 
         # Setting the parameters for the Bicep deployment
