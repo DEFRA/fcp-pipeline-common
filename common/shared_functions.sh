@@ -218,13 +218,17 @@ run_db_migration() {
   local DB_PASSWORD
   DB_PASSWORD=$(az account get-access-token --resource-type oss-rdbms --query accessToken --output tsv)
 
-  result=$(docker run --rm -v "${PWD}"/"${appName}"/changelog:/liquibase/changelog \
+  docker run --rm -v "${PWD}"/"${appName}"/changelog:/liquibase/changelog \
                     liquibase/liquibase:4.12.0 update --driver=org.postgresql.Driver \
     --changeLogFile=/changelog/db.changelog.xml \
     --url=jdbc:postgresql://"$DATABASE_HOST":5432/"$DATABASE" \
-    --username="$DATABASE_ADMIN" --password="$DB_PASSWORD" --defaultSchemaName="$SCHEMA" )
+    --username="$DATABASE_ADMIN" --password="$DB_PASSWORD" --defaultSchemaName="$SCHEMA"
+  local rc=$?
 
-  echo "$result"
+  if [[ $rc -ne 0 ]]; then
+    echo "##vso[task.logissue type=error]Liquibase migration failed for ${appName} (exit ${rc})"
+    return $rc
+  fi
 }
 
 # Usage:
