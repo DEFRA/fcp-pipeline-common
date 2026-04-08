@@ -73,7 +73,7 @@ resources:
       name: defra/fcp-pipeline-common
       endpoint: DEFRA-ADP
       type: github
-      ref: refs/heads/liq_base_exit
+      # ref: refs/heads/liq_base_exit
 
 variables:
   - ${{ if ne(parameters.variableGroupName, '') }}:
