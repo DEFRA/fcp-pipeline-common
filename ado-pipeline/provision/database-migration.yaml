@@ -15,7 +15,9 @@ steps:
       scriptType: bash
       scriptLocation: inlineScript
       inlineScript: |
-        if [[ "$(hasDatabase)" == "true" ]]; then      
+        set -euo pipefail
+
+        if [[ "$(hasDatabase)" == "true" ]]; then
           source ./fcp-pipeline-common/common/shared_functions.sh
 
           SCHEMA_NAME=$(get_schema_name "$(appName)" "${{ parameters.isTemporary }}" "$(prOrBranchNo)")
@@ -24,8 +26,7 @@ steps:
 
           echo "##[debug]Migrating the database $DB_FULL_NAME"
 
-          RESULT=$(run_db_migration "$(appName)" "$(sqlpostgresflexiAADGroupName)" "$DATABASE_HOST" "$SCHEMA_NAME" "$DB_FULL_NAME")
-          echo "##[debug]$RESULT"
+          run_db_migration "$(appName)" "$(sqlpostgresflexiAADGroupName)" "$DATABASE_HOST" "$SCHEMA_NAME" "$DB_FULL_NAME"
         else
           echo "##[debug]The service doesn't need a database"
         fi

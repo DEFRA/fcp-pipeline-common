@@ -32,7 +32,7 @@ parameters:
     default: true
   - name: variableGroupName
     type: string
-    default: ''
+    default: ""
   - name: pr_params
     type: object
     default: {}
@@ -65,7 +65,7 @@ parameters:
 
   - name: deployVersion
     type: string
-    default: ''
+    default: ""
 
 resources:
   repositories:
@@ -73,7 +73,7 @@ resources:
       name: defra/fcp-pipeline-common
       endpoint: DEFRA-ADP
       type: github
-      # ref: refs/heads/branch-name
+      # ref: refs/heads/liq_base_exit
 
 variables:
   - ${{ if ne(parameters.variableGroupName, '') }}:
@@ -100,7 +100,7 @@ variables:
       - name: branchRef
         value: $[variables['Build.SourceBranch']] # e.g. refs/heads/main
       - name: prNumber
-        value: ''
+        value: ""
       - name: isPr
         value: false
 
@@ -110,10 +110,10 @@ variables:
 
 stages:
   - stage: Build
-    displayName: 'Build'
+    displayName: "Build"
     jobs:
       - job: InitAndBuild
-        displayName: 'Build Application'
+        displayName: "Build Application"
 
         steps:
           - checkout: self
@@ -128,7 +128,7 @@ stages:
               echo "##[section]Is Pull Request: $(isPr)"
               echo "##[section]Pull Request Number: $(prNumber)"
 
-            displayName: 'Build and Workspace Info'
+            displayName: "Build and Workspace Info"
 
           - template: /ado-pipeline/build/helpers/app-version.yaml
             parameters:
@@ -140,7 +140,7 @@ stages:
               failOnThreshold: ${{ parameters.failOnThreshold }}
 
   - stage: Promote
-    displayName: 'Promote'
+    displayName: "Promote"
     dependsOn: Build
     variables:
       - template: variables.yaml
@@ -156,7 +156,7 @@ stages:
 
       - ${{ if ne(variables['isPackage'], true) }}:
           - job: HelmTemplate
-            displayName: 'Build Helm Template'
+            displayName: "Build Helm Template"
             steps:
               - checkout: self
               - checkout: FcpPipelineCommon
@@ -189,7 +189,7 @@ stages:
                           acrName: $(AcrSND1)
 
           - job: DockerBuild
-            displayName: 'Docker Build'
+            displayName: "Docker Build"
             steps:
               - checkout: self
               - checkout: FcpPipelineCommon
@@ -271,8 +271,8 @@ stages:
 
                   APP_VERSION=$(releaseVersion)
                   REPO_OWNER="DEFRA"
-                  REPO_NAME="$(appName)"      
-                              
+                  REPO_NAME="$(appName)"
+
                   echo "##[debug]Tagging the repository with version $APP_VERSION"
 
                   echo "##[debug]Setting the git origin url with PAT for tagging"
@@ -333,7 +333,7 @@ stages:
 
                   echo "##[debug]Release created successfully for tag $APP_VERSION"
 
-                displayName: 'Tag Repository'
+                displayName: "Tag Repository"
 
   - ${{ if eq(variables['isPackage'], true) }}:
       - stage: PackageDeployment
@@ -596,7 +596,7 @@ stages:
               - template: variables.yaml
               - group: fcp-pipeline-dev1-variables
             pool:
-              name: 'DEFRA-FFC-DEV1-ubuntu2204'
+              name: "DEFRA-FFC-DEV1-ubuntu2204"
               condition: succeeded()
             dependsOn:
               - Build
@@ -703,7 +703,7 @@ stages:
               - template: variables.yaml
               - group: fcp-pipeline-test-variables
             pool:
-              name: 'DEFRA-FFC-DEV1-ubuntu2204'
+              name: "DEFRA-FFC-DEV1-ubuntu2204"
               condition: succeeded()
             dependsOn:
               - Build
@@ -778,7 +778,7 @@ stages:
               - template: variables.yaml
               - group: fcp-pipeline-pre1-variables
             pool:
-              name: 'DEFRA-FFC-PRE1-ubuntu2204'
+              name: "DEFRA-FFC-PRE1-ubuntu2204"
               condition: succeeded()
             dependsOn:
               - Build
@@ -858,7 +858,7 @@ stages:
               - template: variables.yaml
               - group: fcp-pipeline-prd1-variables
             pool:
-              name: 'DEFRA-FFC-PRD1-ubuntu2204'
+              name: "DEFRA-FFC-PRD1-ubuntu2204"
               condition: succeeded()
             dependsOn:
               - Build
