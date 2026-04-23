@@ -1,5 +1,0 @@
----
-container.active: "true"
-container.mssqlDb: "RPA.Finance.CrossBorder.PaymentEngine (PreProd)"
-container.mssqlHost: "10.178.228.59"
-container.mssqlUser: "Crossborder_Payment_Hub"
