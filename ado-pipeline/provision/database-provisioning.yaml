@@ -60,10 +60,18 @@ steps:
             echo "##[debug]Creating a temporary schema for the deployment"
 
             echo "##[debug]Creating the Schema: $SCHEMA_NAME in the Database: $DB_FULL_NAME in $DATABASE_HOST"
+            
+            echo "##[debug]Delete schema if exist for the pr deployment first"
+
+            dropSchemaCommand="DROP SCHEMA IF EXISTS \"${SCHEMA_NAME}\" CASCADE"
+
+            RESULT=$(run_db_command "$DATABASE_ADMIN" "$DATABASE_HOST" "$DB_FULL_NAME" "$dropSchemaCommand")
+
+            echo "##[debug]Create the schema"
+
             createCommand="CREATE SCHEMA IF NOT EXISTS \"${SCHEMA_NAME}\""
 
             RESULT=$(run_db_command "$DATABASE_ADMIN" "$DATABASE_HOST" "$DB_FULL_NAME" "$createCommand")
-            echo "##[debug]RESULT"
             
           fi
             
