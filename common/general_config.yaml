@@ -8,13 +8,22 @@ db_readonly_access:
     - team: ffc-demo
       snd:
         user: AG-Azure-FFC-Platform_Team-Readers
+      pre:
+        user: AG-Azure-FFC_PRE_DEMO_SQL-Readers
+      prd:
+        user: AG-Azure-FFC_PRD_DEMO_SQL-Readers
     # - team: ffc-pay
     #   pre:
-    #     user: AG-Azure-FFC_PRE_PAYMENT_SQL-Readers
+    #     user: AG-Azure-FFC_PRE_PAYMENTS_SQL-Readers
     #   prd:
-    #     user: AG-Azure-FFC_PRD_PAYMENT_SQL-Readers
+    #     user: AG-Azure-FFC_PRD_PAYMENTS_SQL-Readers
     # - team: ffc-doc
     #   pre:
-    #     user: AG-Azure-FFC_PRE_PAYMENT_SQL-Readers
+    #     user: AG-Azure-FFC_PRE_DOC_STATEMENT_SQL-Readers
     #   prd:
-    #     user: AG-Azure-FFC_PRD_PAYMENT_SQL-Readers
+    #     user: AG-Azure-FFC_PRD_DOC_STATEMENT_SQL-Readers
+    # - team: ffc-ddi
+    #   pre:
+    #     user: AG-Azure-FFC_PRE_DDI_SQL-Readers
+    #   prd:
+    #     user: AG-Azure-FFC_PRD_DDI_SQL-Readers
