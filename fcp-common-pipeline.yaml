@@ -63,6 +63,10 @@ parameters:
     type: boolean
     default: false
 
+  - name: runSynkScan
+    type: boolean
+    default: true
+  
   - name: deployVersion
     type: string
     default: ''
@@ -145,6 +149,7 @@ stages:
     variables:
       - template: variables.yaml
     jobs:
+      - ${{ if eq(parameters.runSnykScan, true) }}:
       - job: SnykScanApplication
         displayName: Snyk Application Scan
         steps:
