@@ -63,7 +63,7 @@ parameters:
     type: boolean
     default: false
 
-  - name: runSynkScan
+  - name: runSnykScan
     type: boolean
     default: true
   
@@ -150,14 +150,14 @@ stages:
       - template: variables.yaml
     jobs:
       - ${{ if eq(parameters.runSnykScan, true) }}:
-      - job: SnykScanApplication
-        displayName: Snyk Application Scan
-        steps:
-          - checkout: self
-          - checkout: FcpPipelineCommon
-          - template: /ado-pipeline/promote/snyk-scan-application.yaml
-            parameters:
-              appFrameworkType: ${{ parameters.appFrameworkType }}
+        - job: SnykScanApplication
+          displayName: Snyk Application Scan
+          steps:
+            - checkout: self
+            - checkout: FcpPipelineCommon
+            - template: /ado-pipeline/promote/snyk-scan-application.yaml
+              parameters:
+                appFrameworkType: ${{ parameters.appFrameworkType }}
 
       - ${{ if ne(variables['isPackage'], true) }}:
           - job: HelmTemplate
