@@ -1,5 +1,5 @@
 schedules:
-  - cron: "0 0 * * 0" # every Sunday at midnight
+  - cron: "0 0 * * *" # Every night at midnight
     displayName: Weekly Sunday Midnight
     always: true
     branches:
