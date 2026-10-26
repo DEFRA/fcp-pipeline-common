@@ -1,6 +1,6 @@
 schedules:
   - cron: "0 0 * * *" # Every night at midnight
-    displayName: Weekly Sunday Midnight
+    displayName: Midnight Nightly
     always: true
     branches:
         include:
