@@ -6,6 +6,7 @@ param storage object
 param location string = resourceGroup().location
 param baseTime string = utcNow('yyyyMMdd')
 param environmentDescription string
+param allowedIps array = []
 
 resource storageResource 'Microsoft.Storage/storageAccounts@2025-01-01' = {
   kind: 'StorageV2'
@@ -17,8 +18,13 @@ resource storageResource 'Microsoft.Storage/storageAccounts@2025-01-01' = {
     networkAcls: {
       bypass: 'AzureServices'
       virtualNetworkRules: []
-      ipRules: []
-      defaultAction: 'Allow'
+      ipRules: [
+        for ip in allowedIps: {
+          value: ip
+          action: 'Allow'
+        }
+      ]
+      defaultAction: empty(allowedIps) ? 'Allow' : 'Deny'
     }
     supportsHttpsTrafficOnly: true
     encryption: {
