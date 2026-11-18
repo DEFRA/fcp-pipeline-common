@@ -77,7 +77,7 @@ steps:
       # setting the pipeline name with updating the build number
       
       if [[ "$(isPr)" == "true" ]]; then
-        echo "##vso[build.updatebuildnumber]$(System.PullRequest.SourceBranch)  $version"
+        echo "##vso[build.updatebuildnumber]$version"
       else
         if [[ "$(isMainBranch)" == "True" ]]; then
           echo "##vso[build.updatebuildnumber]$version"

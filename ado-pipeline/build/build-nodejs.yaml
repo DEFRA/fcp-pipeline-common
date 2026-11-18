@@ -14,10 +14,10 @@ parameters:
 
 steps:
   - ${{ if ne(parameters.frameworkVersion, '') }}:
-      - task: NodeTool@0
+      - task: UseNode@1
         displayName: Use Node ${{ parameters.frameworkVersion }}
         inputs:
-          versionSpec: ${{ parameters.frameworkVersion }}
+          version: ${{ parameters.frameworkVersion }}
           checkLatest: true
         enabled: true #this step takes long time to download nodejs file
 
