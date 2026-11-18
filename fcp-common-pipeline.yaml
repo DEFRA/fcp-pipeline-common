@@ -1,4 +1,7 @@
 parameters:
+  - name: nodeVersion
+    type: string
+    default: '22.x'
   - name: appFrameworkType
     type: string
     default: nodejs
@@ -138,6 +141,8 @@ stages:
             parameters:
               npmLegacyPeerDeps: ${{ parameters.npmLegacyPeerDeps }}
               failOnThreshold: ${{ parameters.failOnThreshold }}
+              ${{ if eq(parameters.appFrameworkType, 'nodejs') }}:
+                frameworkVersion: ${{ parameters.nodeVersion }}
 
   - stage: Promote
     displayName: 'Promote'
